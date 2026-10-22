@@ -1,0 +1,9 @@
+.git
+.github
+.venv
+build
+Testing
+CMakeUserPresets.json
+**/__pycache__
+.env
+.env.*

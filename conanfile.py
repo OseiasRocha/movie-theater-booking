@@ -10,10 +10,13 @@ class CppTemplate(ConanFile):
     package_type = "application"
     required_conan_version = ">=2.2 <3"
     settings = "os", "compiler", "build_type", "arch"
-    exports_sources = "CMakeLists.txt", "src/*"
+    exports_sources = "CMakeLists.txt", "src/*", "tests/*"
 
     def requirements(self):
         self.requires("spdlog/1.17.0")
+
+    def build_requirements(self):
+        self.test_requires("gtest/1.18.0")
 
     def layout(self):
         self.folders.build = "build"
