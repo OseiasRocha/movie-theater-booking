@@ -125,9 +125,46 @@ the base images if authentication is required.
 
 ## Continuous integration
 
-GitHub Actions runs only on pull requests: opening, reopening, and updating an
-open pull request trigger CI. Pushes without a pull request do not trigger it.
+GitHub Actions runs on pull requests and published GitHub Releases. Opening,
+reopening, and updating an open pull request trigger CI. Pushes without a pull
+request and draft releases do not trigger it.
 The build matrix tests Linux x86-64, Windows x86-64, and Linux ARM64. A separate
 Docker job builds the hardened Alpine image, runs unit tests during the build,
-and checks that the final container starts successfully. Images are built
-locally in the runner and are not published.
+and checks that the final container starts successfully. Pull requests build
+and test without publishing.
+
+## Release publishing
+
+Publishing a GitHub Release (including a prerelease) runs the same CI. After
+all builds and tests pass, the workflow publishes:
+
+- Linux x86-64 and ARM64 `.tar.gz` binary archives and a Windows x86-64 `.zip`
+  archive, each with a `.sha256` checksum, attached to that GitHub Release.
+- The tested hardened Alpine Docker image for `linux/amd64`, tagged with the
+  release tag, such as `v1.0.0`. Stable releases also update `latest`;
+  prereleases do not.
+
+Configure these repository Actions secrets before publishing a release:
+
+| Secret | Value |
+| --- | --- |
+| `DHI_USERNAME` | Docker Hub username for pulling hardened base images |
+| `DHI_TOKEN` | Token with read access to hardened base images |
+| `DOCKERHUB_USERNAME` | Docker Hub username for publishing |
+| `DOCKERHUB_TOKEN` | Docker Hub token with write access to the image repository |
+
+The image defaults to `<DOCKERHUB_USERNAME>/movie-theater-booking`. To publish
+under another repository or organization, set the Actions variable
+`DOCKERHUB_IMAGE` to the full image name, such as `my-org/movie-theater-booking`,
+and grant the publishing token write access there. Create the Docker Hub
+repository if needed. The GitHub release upload uses the workflow's automatic
+`GITHUB_TOKEN`; no GitHub personal token is needed.
+
+Release archives contain `bin/` and this README. Windows archives include the
+MSVC runtime DLLs detected by CMake. Linux binaries require the target system's
+glibc, libstdc++, libgcc, and libatomic; they are built on the Ubuntu runner
+listed in the workflow. Use the Docker image for the Alpine/musl build.
+
+The workflow uploads binaries using `gh release upload --clobber`, allowing a
+failed release run to be rerun with the same asset names. Saving a draft does
+not publish anything; select **Publish release** to start the pipeline.
