@@ -1,7 +1,9 @@
 #include "DB/queries.h"
 #include "DataModel/Screening.h"
 #include "DataModel/Seat.h"
+#include "DataModel/Theater.h"
 #include <algorithm>
+#include <limits>
 #include <memory>
 #include <optional>
 #include <ranges>
@@ -68,7 +70,7 @@ std::optional<datamodel::Movie> GetMovieByName::execute(const Storage& storage) 
 }
 
 std::vector<datamodel::Seat> GetAvailableSeats::execute(const db::Storage& storage) const {
-   const auto screening = storage.screenings().find(m_screeningId);
+   const auto& screening = storage.screenings().find(m_screeningId);
 
    if (screening == storage.screenings().end()) {
       logger->error("Screening with Id {} not found", m_screeningId);
@@ -85,4 +87,45 @@ bool MakeBooking::execute(db::Storage& storage) const {
       return false;
    }
    return screeningIt->second.makeBooking(m_seatsToBook);
+}
+std::vector<datamodel::Screening> queries::GetAllScreenings::execute(const db::Storage& storage) const {
+   std::vector<datamodel::Screening> result;
+   result.reserve(storage.screenings().size());
+
+   for (const auto& [id, screening] : storage.screenings()) {
+      result.push_back(screening);
+   }
+
+   return result;
+}
+
+std::vector<datamodel::Theater> queries::GetAllTheaters::execute(const db::Storage& storage) const {
+
+   std::vector<datamodel::Theater> result;
+   result.reserve(storage.theaters().size());
+
+   for (const auto& [id, theater] : storage.theaters()) {
+      result.push_back(theater);
+   }
+
+   return result;
+}
+std::vector<datamodel::Screening> GetScreeningsWithMovieAndTheater::execute(const db::Storage& storage) const {
+
+   auto matches = storage.screenings() | std::views::values | std::views::filter([this](const auto& screening) {
+                     return screening.movieId() == m_movieId && screening.theaterId() == m_theaterId;
+                  });
+
+   if (matches.empty()) {
+      logger->error("Screening with movieId {} and teatherId {} not found", m_movieId, m_theaterId);
+      return {};
+   }
+
+   std::vector<datamodel::Screening> result;
+
+   for (const auto& screening : matches) {
+      result.push_back(screening);
+   }
+
+   return result;
 }

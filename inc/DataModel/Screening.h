@@ -6,8 +6,6 @@
 #include <cstddef>
 #include <cstdint>
 #include <memory>
-#include <ranges>
-#include <span>
 #include <spdlog/logger.h>
 #include <spdlog/sinks/stdout_color_sinks.h>
 #include <stdexcept>
@@ -17,8 +15,8 @@ namespace datamodel {
 class Screening {
  public:
    static constexpr std::size_t MAX_SEATS = 20;
-   Screening(uint32_t theaterId, uint32_t movieId, const std::vector<Seat>& seats)
-      : m_theaterId(theaterId), m_movieId(movieId), m_numSeats(seats.size()) {
+   Screening(uint32_t id, uint32_t theaterId, uint32_t movieId, const std::vector<Seat>& seats)
+      : m_id(id), m_theaterId(theaterId), m_movieId(movieId), m_numSeats(seats.size()) {
       if (seats.size() > MAX_SEATS) {
          throw std::length_error("Too many seats for screening");
       }
@@ -26,15 +24,14 @@ class Screening {
    }
    inline uint32_t theaterId() const { return m_theaterId; }
    inline uint32_t movieId() const { return m_movieId; }
+   inline uint32_t id() const { return m_id; }
    std::vector<Seat> availableSeats() const;
-   auto availableSeatsView() const {
-      return std::span<const Seat>{m_seats}.first(m_numSeats) |
-             std::views::filter([](const Seat& seat) { return !seat.isBooked(); });
-   }
+   std::array<Seat, MAX_SEATS> allSeats() const;
    // Caller must hold exclusive access when this screening is shared.
    bool makeBooking(const std::vector<std::string>& seatsToBook);
 
  private:
+   uint32_t m_id;
    uint32_t m_theaterId;
    uint32_t m_movieId;
    std::array<Seat, MAX_SEATS> m_seats;

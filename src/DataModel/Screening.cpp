@@ -1,5 +1,8 @@
 #include "DataModel/Screening.h"
+#include "DataModel/Seat.h"
+#include <array>
 #include <spdlog/fmt/ranges.h>
+#include <vector>
 
 using namespace datamodel;
 
@@ -18,6 +21,12 @@ std::vector<Seat> Screening::availableSeats() const {
    m_logger->trace("Available seats: {}", result);
    return result;
 }
+
+std::array<Seat, Screening::MAX_SEATS> Screening::allSeats() const {
+   std::array<Seat, MAX_SEATS> result{m_seats};
+   return result;
+}
+
 bool Screening::makeBooking(const std::vector<std::string>& seatsToBook) {
    if (seatsToBook.empty() || seatsToBook.size() > m_numSeats) {
       return false;

@@ -14,15 +14,6 @@
 
 namespace config {
 
-enum class LogLevel {
-   Info,
-   Warning,
-   Debug,
-   Trace,
-   Critical,
-   Error,
-};
-
 class Configs {
  public:
    // Overrides apply only on first initialization, before DB initialization.

@@ -19,6 +19,7 @@
 #include <string>
 #include <string_view>
 #include <trantor/utils/Logger.h>
+#include <vector>
 
 // Unit tests compile this file with GoogleTest's entry point instead.
 #ifndef MOVIE_THEATER_BOOKING_NO_MAIN
@@ -60,10 +61,62 @@ CommandLineArguments parseArguments(int argc, char* argv[]) {
 }
 } // namespace
 
-void setupEndpoints() {
+void setupEndpoints(std::shared_ptr<spdlog::logger> logger) {
+   drogon::app().registerHandler(
+      "/bookings",
+      [logger](const drogon::HttpRequestPtr& req, std::function<void(const drogon::HttpResponsePtr&)>&& callback) {
+         const auto respond = [&](drogon::HttpStatusCode status, const Json::Value& json) {
+            auto response = drogon::HttpResponse::newHttpJsonResponse(json);
+            response->setStatusCode(status);
+            logger->debug("Booking response status: {}", static_cast<int>(status));
+            callback(response);
+         };
+         const auto reject = [&](const std::string& message) {
+            Json::Value json(Json::objectValue);
+            json["error"] = message;
+            respond(drogon::k400BadRequest, json);
+         };
+
+         const auto body = req->getJsonObject();
+         if (!body || !body->isObject() || !(*body)["screeningId"].isUInt() || !(*body)["seats"].isArray() ||
+             (*body)["seats"].empty() || (*body)["seats"].size() > datamodel::Screening::MAX_SEATS) {
+            reject("Expected screeningId as an unsigned 32-bit integer and seats as an array of 1 to 20 seat names");
+            return;
+         }
+
+         std::vector<std::string> seats;
+         seats.reserve((*body)["seats"].size());
+         for (const auto& seat : (*body)["seats"]) {
+            if (!seat.isString() || seat.asString().empty()) {
+               reject("Each seat must be a nonempty string");
+               return;
+            }
+            auto name = seat.asString();
+            if (std::find(seats.begin(), seats.end(), name) != seats.end()) {
+               reject("Seat names must be unique");
+               return;
+            }
+            seats.push_back(std::move(name));
+         }
+
+         const auto screeningId = (*body)["screeningId"].asUInt();
+         if (!db::DB::getInstance().query(queries::MakeBooking{std::move(seats), screeningId})) {
+            Json::Value json(Json::objectValue);
+            json["error"] = "Screening not found or requested seats do not exist or are already booked";
+            respond(drogon::k409Conflict, json);
+            return;
+         }
+
+         Json::Value json(Json::objectValue);
+         json["booked"] = true;
+         json["screeningId"] = screeningId;
+         json["seats"] = (*body)["seats"];
+         respond(drogon::k200OK, json);
+      },
+      {drogon::Post}, "MakeBooking");
    drogon::app().registerHandler(
       "/movies",
-      [](const drogon::HttpRequestPtr& req, std::function<void(const drogon::HttpResponsePtr&)>&& callback) -> void {
+      [logger](const drogon::HttpRequestPtr&, std::function<void(const drogon::HttpResponsePtr&)>&& callback) -> void {
          queries::GetAllMovies q{};
          Json::Value json{Json::arrayValue};
          const auto& movies = db::DB::getInstance().query(q);
@@ -74,9 +127,160 @@ void setupEndpoints() {
             json.append(std::move(item));
          }
          drogon::HttpResponsePtr resp = drogon::HttpResponse::newHttpJsonResponse(json);
+         logger->debug("Response status: {}", static_cast<int>(resp->getStatusCode()));
+         logger->trace("Response body: {}", resp->getJsonObject()->toStyledString());
          callback(resp);
       },
       {drogon::Get}, "MoviesList");
+   drogon::app().registerHandler(
+      "/theaters",
+      [logger](const drogon::HttpRequestPtr&, std::function<void(const drogon::HttpResponsePtr&)>&& callback) -> void {
+         queries::GetAllTheaters q{};
+         Json::Value json{Json::arrayValue};
+         const auto& theaters = db::DB::getInstance().query(q);
+         for (const auto& theater : theaters) {
+            Json::Value item{Json::objectValue};
+            item["id"] = theater.id();
+            item["name"] = std::move(std::string{theater.name()});
+            json.append(std::move(item));
+         }
+         drogon::HttpResponsePtr resp = drogon::HttpResponse::newHttpJsonResponse(json);
+         logger->debug("Response status: {}", static_cast<int>(resp->getStatusCode()));
+         logger->trace("Response body: {}", resp->getJsonObject()->toStyledString());
+         callback(resp);
+      },
+      {drogon::Get}, "TheatersList");
+   drogon::app().registerHandler(
+      "/screenings",
+      [logger](const drogon::HttpRequestPtr&, std::function<void(const drogon::HttpResponsePtr&)>&& callback) -> void {
+         queries::GetAllScreenings q{};
+         Json::Value json{Json::arrayValue};
+         const auto& screenings = db::DB::getInstance().query(q);
+         for (const auto& screening : screenings) {
+            Json::Value item{Json::objectValue};
+            item["id"] = screening.id();
+            item["movieId"] = screening.movieId();
+            item["theaterId"] = screening.theaterId();
+            Json::Value seats = Json::Value{Json::arrayValue};
+            for (const auto& seat : screening.allSeats()) {
+               Json::Value s{Json::objectValue};
+               s["name"] = std::move(std::string{seat.seat()});
+               s["isBooked"] = seat.isBooked();
+               seats.append(s);
+            }
+            item["seats"] = seats;
+            json.append(std::move(item));
+         }
+         drogon::HttpResponsePtr resp = drogon::HttpResponse::newHttpJsonResponse(json);
+         logger->debug("Response status: {}", static_cast<int>(resp->getStatusCode()));
+         logger->trace("Response body: {}", resp->getJsonObject()->toStyledString());
+         callback(resp);
+      },
+      {drogon::Get}, "ScreeningsList");
+   drogon::app().registerHandler(
+      "/theater?movieId={movie}",
+      [logger](const drogon::HttpRequestPtr&, std::function<void(const drogon::HttpResponsePtr&)>&& callback,
+               const std::string& movieId) -> void {
+         uint32_t movieIdInt{};
+         const auto [end, error] = std::from_chars(movieId.data(), movieId.data() + movieId.size(), movieIdInt);
+         if (error == std::errc{} && end == movieId.data() + movieId.size()) {
+            queries::GetTheatersWithMovie q{movieIdInt};
+            Json::Value json{Json::arrayValue};
+            const auto& theaters = db::DB::getInstance().query(q);
+            for (const auto& theater : theaters) {
+               Json::Value item{Json::objectValue};
+               item["id"] = theater.id();
+               item["name"] = std::move(std::string{theater.name()});
+               json.append(std::move(item));
+            }
+            drogon::HttpResponsePtr resp = drogon::HttpResponse::newHttpJsonResponse(json);
+            logger->debug("Response status: {}", static_cast<int>(resp->getStatusCode()));
+            logger->trace("Response body: {}", resp->getJsonObject()->toStyledString());
+            callback(resp);
+         } else {
+            Json::Value json{Json::objectValue};
+            json["error"] = "movie must be a valid unsigned 32-bit integer";
+            drogon::HttpResponsePtr resp = drogon::HttpResponse::newHttpJsonResponse(json);
+            resp->setStatusCode(drogon::HttpStatusCode::k400BadRequest);
+            logger->debug("Response status: {}", static_cast<int>(resp->getStatusCode()));
+            logger->debug("movieId: {}", movieIdInt);
+            callback(resp);
+         }
+      },
+      {drogon::Get}, "TheatersWithMovieList");
+   drogon::app().registerHandler(
+      "/screenings?movieId={1}&theaterId={2}",
+      [logger](const drogon::HttpRequestPtr&, std::function<void(const drogon::HttpResponsePtr&)>&& callback,
+               const std::string& movieId, const std::string& theaterId) -> void {
+         uint32_t movieIdInt{};
+         uint32_t theaterIdInt{};
+         const auto [endMovie, errorMovie] =
+            std::from_chars(movieId.data(), movieId.data() + movieId.size(), movieIdInt);
+         const auto [endTheater, errorTheater] =
+            std::from_chars(theaterId.data(), theaterId.data() + theaterId.size(), theaterIdInt);
+
+         if (errorMovie == std::errc{} && endMovie == movieId.data() + movieId.size() && errorTheater == std::errc{} &&
+             endTheater == theaterId.data() + theaterId.size()) {
+            queries::GetScreeningsWithMovieAndTheater q{movieIdInt, theaterIdInt};
+
+            Json::Value json{Json::arrayValue};
+
+            const auto& screenings = db::DB::getInstance().query(q);
+
+            for (const auto& screening : screenings) {
+               Json::Value item{Json::objectValue};
+               item["id"] = screening.id();
+               json.append(std::move(item));
+            }
+
+            drogon::HttpResponsePtr resp = drogon::HttpResponse::newHttpJsonResponse(json);
+            logger->debug("Response status: {}", static_cast<int>(resp->getStatusCode()));
+            logger->trace("Response body: {}", resp->getJsonObject()->toStyledString());
+
+            callback(resp);
+         } else {
+            Json::Value json{Json::objectValue};
+            json["error"] = "movie id and/ theater id must be a valid unsigned 32-bit integer";
+            drogon::HttpResponsePtr resp = drogon::HttpResponse::newHttpJsonResponse(json);
+            resp->setStatusCode(drogon::HttpStatusCode::k400BadRequest);
+            logger->debug("Response status: {}", static_cast<int>(resp->getStatusCode()));
+            logger->debug("movieId: {} theaterId: {}", movieIdInt, theaterIdInt);
+            callback(resp);
+         }
+      },
+      {drogon::Get}, "ScreeningsWithMovieAndTheater");
+   drogon::app().registerHandler(
+      "/available_seats?screeningId={screeningId}",
+      [logger](const drogon::HttpRequestPtr&, std::function<void(const drogon::HttpResponsePtr&)>&& callback,
+               const std::string& screnningId) -> void {
+         uint32_t screeningIdInt{};
+         const auto [end, error] =
+            std::from_chars(screnningId.data(), screnningId.data() + screnningId.size(), screeningIdInt);
+         if (error == std::errc{} && end == screnningId.data() + screnningId.size()) {
+            queries::GetAvailableSeats q{screeningIdInt};
+            Json::Value json{Json::arrayValue};
+            const auto& seats = db::DB::getInstance().query(q);
+            for (const auto& seat : seats) {
+               Json::Value item{Json::objectValue};
+               item["seat"] = std::move(std::string{seat.seat()});
+               item["isBooked"] = seat.isBooked();
+               json.append(std::move(item));
+            }
+            drogon::HttpResponsePtr resp = drogon::HttpResponse::newHttpJsonResponse(json);
+            logger->debug("Response status: {}", static_cast<int>(resp->getStatusCode()));
+            logger->trace("Response body: {}", resp->getJsonObject()->toStyledString());
+            callback(resp);
+         } else {
+            Json::Value json{Json::objectValue};
+            json["error"] = "screeningId must be a valid unsigned 32-bit integer";
+            drogon::HttpResponsePtr resp = drogon::HttpResponse::newHttpJsonResponse(json);
+            resp->setStatusCode(drogon::HttpStatusCode::k400BadRequest);
+            logger->debug("Response status: {}", static_cast<int>(resp->getStatusCode()));
+            logger->debug("screeningId: {} ", screeningIdInt);
+            callback(resp);
+         }
+      },
+      {drogon::Get}, "AvailableSeatsInScreening");
 }
 
 int main(int argc, char* argv[]) {
@@ -102,7 +306,7 @@ int main(int argc, char* argv[]) {
          .setThreadNum(threads)
          .enableGzip(true)
          .reusePort();
-      setupEndpoints();
+      setupEndpoints(logger);
       logger->info("Listening on http://{}:{} with {} workers", configs.address(), configs.port(), threads);
       drogon::app().run();
    } catch (const std::exception& e) {

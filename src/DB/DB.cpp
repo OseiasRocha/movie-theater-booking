@@ -25,7 +25,7 @@ DB::DB() {
       for (const auto& seat : screening["seats"]) {
          seats.push_back(datamodel::Seat{seat["name"].asString()});
       }
-      m_storage.m_screenings.try_emplace(screening["id"].asUInt(), screening["theaterId"].asUInt(),
-                                         screening["movieId"].asUInt(), seats);
+      m_storage.m_screenings.try_emplace(screening["id"].asUInt(), screening["id"].asUInt(),
+                                         screening["theaterId"].asUInt(), screening["movieId"].asUInt(), seats);
    }
 }

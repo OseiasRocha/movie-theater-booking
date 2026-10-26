@@ -59,13 +59,8 @@ TEST(ScreeningTest, BookingValidatesEntireRequestBeforeChangingSeats) {
    const auto remaining = screening.availableSeats();
    ASSERT_EQ(remaining.size(), 1u);
    EXPECT_EQ(remaining[0].seat(), "A2");
-   auto view = screening.availableSeatsView();
-   ASSERT_NE(view.begin(), view.end());
-   EXPECT_EQ(view.begin()->seat(), "A2");
    EXPECT_TRUE(screening.makeBooking({"A2"}));
    EXPECT_TRUE(screening.availableSeats().empty());
-   auto emptyView = screening.availableSeatsView();
-   EXPECT_EQ(emptyView.begin(), emptyView.end());
 }
 
 TEST(ScreeningTest, BooksMultipleSeatsTogether) {
@@ -80,26 +75,26 @@ TEST(ScreeningTest, EmptyScreeningRejectsBooking) {
    EXPECT_FALSE(screening.makeBooking({}));
 }
 
-TEST(ScreeningTest, SeatViewBorrowsConstConfiguredSeats) {
+TEST(ScreeningTest, AvailableSeatsReturnsIndependentSnapshotsFromConstScreening) {
    const datamodel::Screening screening{10, 1, {datamodel::Seat{"A1"}, datamodel::Seat{"A2"}}};
-   auto view = screening.availableSeatsView();
-   static_assert(std::same_as<std::ranges::range_reference_t<decltype(view)>, const datamodel::Seat&>);
-   auto it = view.begin();
-   ASSERT_NE(it, view.end());
-   EXPECT_EQ(it->seat(), "A1");
-   auto secondView = screening.availableSeatsView();
-   EXPECT_EQ(&*it, &*secondView.begin());
-   ++it;
-   ASSERT_NE(it, view.end());
-   EXPECT_EQ(it->seat(), "A2");
-   ++it;
-   EXPECT_EQ(it, view.end());
+   auto seats = screening.availableSeats();
+   ASSERT_EQ(seats.size(), 2u);
+   EXPECT_EQ(seats[0].seat(), "A1");
+   EXPECT_EQ(seats[1].seat(), "A2");
+   seats[0].setSeat("changed");
+   seats[1].setIsBooked(true);
+
+   const auto secondSnapshot = screening.availableSeats();
+   ASSERT_EQ(secondSnapshot.size(), 2u);
+   EXPECT_EQ(secondSnapshot[0].seat(), "A1");
+   EXPECT_EQ(secondSnapshot[1].seat(), "A2");
+   EXPECT_FALSE(secondSnapshot[0].isBooked());
+   EXPECT_FALSE(secondSnapshot[1].isBooked());
 }
 
-TEST(ScreeningTest, SeatViewOfEmptyScreeningIsEmpty) {
+TEST(ScreeningTest, AvailableSeatsOfEmptyScreeningIsEmpty) {
    const datamodel::Screening screening{10, 1, {}};
-   auto view = screening.availableSeatsView();
-   EXPECT_EQ(view.begin(), view.end());
+   EXPECT_TRUE(screening.availableSeats().empty());
 }
 
 TEST(ScreeningTest, RejectsConstructionAboveCapacity) {
@@ -121,7 +116,6 @@ TEST(ScreeningTest, BooksEntireCapacityAndRejectsOversizedRequestWithoutChanges)
    EXPECT_EQ(screening.availableSeats().size(), seats.size());
    EXPECT_TRUE(screening.makeBooking(names));
    EXPECT_TRUE(screening.availableSeats().empty());
-   EXPECT_TRUE(std::ranges::empty(screening.availableSeatsView()));
    EXPECT_FALSE(screening.makeBooking(names));
 }
 
@@ -140,7 +134,7 @@ TEST(ScreeningTest, PreservesPreBookedSeatsAndFindsRemainingSeatsAcrossGaps) {
    EXPECT_EQ(screening.availableSeats().size(), 3u);
    EXPECT_TRUE(screening.makeBooking({"A3"}));
    std::vector<std::string> remaining;
-   for (const auto& seat : screening.availableSeatsView()) {
+   for (const auto& seat : screening.availableSeats()) {
       remaining.emplace_back(seat.seat());
    }
    EXPECT_EQ(remaining, (std::vector<std::string>{"A1", "A4"}));

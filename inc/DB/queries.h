@@ -2,9 +2,11 @@
 
 #include "DB/DB.h"
 #include "DataModel/Movie.h"
+#include "DataModel/Screening.h"
 #include "DataModel/Seat.h"
 #include "DataModel/Theater.h"
 #include <cstdint>
+#include <limits>
 #include <optional>
 #include <string>
 #include <string_view>
@@ -16,6 +18,14 @@ struct GetAllMovies {
    std::vector<datamodel::Movie> execute(const db::Storage& storage) const;
 };
 
+struct GetAllScreenings {
+   std::vector<datamodel::Screening> execute(const db::Storage& storage) const;
+};
+
+struct GetAllTheaters {
+   std::vector<datamodel::Theater> execute(const db::Storage& storage) const;
+};
+
 struct GetTheatersWithMovie {
    GetTheatersWithMovie(uint32_t movieId) : m_movieId(movieId) {}
 
@@ -23,6 +33,17 @@ struct GetTheatersWithMovie {
 
  private:
    uint32_t m_movieId;
+};
+
+struct GetScreeningsWithMovieAndTheater {
+   GetScreeningsWithMovieAndTheater(uint32_t movieId, uint32_t theaterId)
+      : m_movieId(movieId), m_theaterId(theaterId) {}
+
+   std::vector<datamodel::Screening> execute(const db::Storage& storage) const;
+
+ private:
+   uint32_t m_movieId;
+   uint32_t m_theaterId;
 };
 
 struct GetMovieByName {
