@@ -1,0 +1,19 @@
+{
+  "movies": [
+    {"id": 1, "name": "Interstellar"}
+  ],
+  "theaters": [
+    {"id": 10, "name": "Cinema One"}
+  ],
+  "screenings": [
+    {
+      "id": 100,
+      "movieId": 1,
+      "theaterId": 10,
+      "seats": [
+        {"name": "A1"},
+        {"name": "A2"}
+      ]
+    }
+  ]
+}

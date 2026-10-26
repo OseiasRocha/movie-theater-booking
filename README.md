@@ -30,6 +30,22 @@ ctest --test-dir build --output-on-failure
 ./build/movie-theater-booking
 ```
 
+## Server address and port
+
+```sh
+./build/movie-theater-booking --address 127.0.0.1 --port 9000
+```
+
+Each option overrides its matching environment variable (`ADDRESS` or `PORT`).
+When an option is supplied, that environment variable is not read. Omitted
+options use the environment, then default to `0.0.0.0` and `8080` when unset.
+Ports must be integers from 1 to 65535. Empty addresses, unknown options,
+duplicate options, and missing option values are rejected.
+
+Command-line options initialize `Configs` before the DB; subsequent singleton
+access reuses those settings. `CONFIG_DB_FILE_PATH` and `LOG_LEVEL` continue to
+use their environment variables independently.
+
 ## Windows build and run
 
 In a Visual Studio developer PowerShell terminal for the target architecture:
@@ -78,6 +94,23 @@ binary error because Conan resolves a different package configuration.
 The generated Conan presets are available after dependency installation. CMake exports
 `compile_commands.json` for editor support. Build outputs and generated presets
 are ignored by Git.
+
+## Formatting
+
+The root `.clang-format` controls C/C++ formatting; replace it with your preferred
+style. In your current Neovim setup, Mason installs `clang-format` and Conform
+runs it on save for C/C++ files. Use `<leader>f` to format manually or
+`:ConformInfo` to inspect formatter availability. Restart Neovim after setup changes.
+
+This checkout has a local Python 3 hook in `.git/hooks/pre-commit`. It is not
+versioned or included when cloning the repository. It automatically formats
+staged `.h` and `.cpp` changes using the
+root `.clang-format` and commits the formatted result. It uses `clang-format`
+from PATH or Neovim's Mason installation. Fully staged files are also updated in
+your working copy. For partially staged files, the working copy is left untouched
+so unstaged edits are preserved; Git may then show formatting differences against
+the new commit. Deleted files and files without staged changes are skipped.
+Formatter errors stop the commit.
 
 ## Unit tests
 

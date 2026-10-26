@@ -1,42 +1,55 @@
-#include "booking.h"
-
-#include <atomic>
-#include <iostream>
-
-bool booking::reserve_seats(int& available_seats, int requested_seats)
-{
-    if (requested_seats <= 0 || requested_seats > available_seats) {
-        return false;
-    }
-    available_seats -= requested_seats;
-    return true;
-}
+#include "DB/DB.h"
+#include "config/config.h"
+#include <cstdlib>
+#include <drogon/drogon.h>
+#include <exception>
+#include <memory>
+#include <optional>
+#include <spdlog/logger.h>
+#include <spdlog/sinks/stdout_color_sinks.h>
+#include <spdlog/spdlog.h>
+#include <stdexcept>
+#include <string>
+#include <string_view>
+#include <trantor/utils/Logger.h>
 
 // Unit tests compile this file with GoogleTest's entry point instead.
 #ifndef MOVIE_THEATER_BOOKING_NO_MAIN
-struct A { int a[4]; };
-struct B { int x, y; };
 
-int main()
-{
-    std::atomic<A> a{};
-    std::atomic<B> b{};
-    std::cout << std::boolalpha
-              << "std::atomic<A> is lock free? "
-              << std::atomic_is_lock_free(&a) << '\n'
-              << "std::atomic<B> is lock free? "
-              << std::atomic_is_lock_free(&b) << '\n';
-
-    // constexpr int worker_count = 4;
-    // constexpr uint64_t increments_per_worker = 10000;
-    // constexpr uint64_t expected = worker_count * increments_per_worker;
-    // const uint64_t actual = run_threaded_counter(worker_count, increments_per_worker);
-    // std::cout << "Threaded counter: " << actual << '/' << expected << '\n';
-    // return actual == expected ? 0 : 1;
-    int available_seats = 100;
-    const bool reserved = booking::reserve_seats(available_seats, 2);
-    std::cout << "Reservation successful? " << reserved << '\n'
-              << "Available seats: " << available_seats << '\n';
-    return reserved ? 0 : 1;
+int main(int argc, char* argv[]) {
+   try {
+      std::optional<std::string_view> address;
+      std::optional<std::string_view> port;
+      for (int i = 1; i < argc; ++i) {
+         const std::string_view option = argv[i];
+         if (option != "--address" && option != "--port") {
+            throw std::invalid_argument("Unknown option: " + std::string{option});
+         }
+         auto& value = option == "--address" ? address : port;
+         if (value) {
+            throw std::invalid_argument("Duplicate option: " + std::string{option});
+         }
+         if (++i == argc || std::string_view{argv[i]}.starts_with("--")) {
+            throw std::invalid_argument("Missing value for " + std::string{option});
+         }
+         value = argv[i];
+      }
+      std::shared_ptr<spdlog::logger> logger = spdlog::stdout_color_mt("Main");
+      std::shared_ptr<spdlog::logger> logger_drogon = spdlog::stdout_color_mt("Drogon");
+      trantor::Logger::enableSpdLog(logger_drogon);
+      const auto& configs = config::Configs::getInstance(address, port);
+      db::DB::getInstance();
+      drogon::app()
+         .setLogLevel(trantor::Logger::kInfo)
+         .addListener(std::string{configs.address()}, configs.port())
+         .run();
+   } catch (const std::exception& e) {
+      spdlog::critical("{}", e.what());
+      return EXIT_FAILURE;
+   } catch (...) {
+      spdlog::critical("Unhandled exception");
+      return EXIT_FAILURE;
+   }
+   return EXIT_SUCCESS;
 }
 #endif

@@ -20,10 +20,20 @@ if(NOT CMAKE_CONFIGURATION_TYPES AND NOT CMAKE_BUILD_TYPE)
 endif()
 
 find_package(spdlog CONFIG REQUIRED)
+find_package(Drogon CONFIG REQUIRED)
 set(THREADS_PREFER_PTHREAD_FLAG ON)
 find_package(Threads REQUIRED)
 
-add_executable(movie-theater-booking src/main.cpp)
+add_executable(movie-theater-booking src/main.cpp src/DB/queries.cpp src/DB/DB.cpp src/DataModel/Screening.cpp src/config/config.cpp)
+add_custom_target(copy-config
+    COMMAND ${CMAKE_COMMAND} -E copy_directory
+        "${CMAKE_CURRENT_SOURCE_DIR}/config"
+        "${CMAKE_CURRENT_BINARY_DIR}/config"
+    COMMENT "Copying runtime configuration to the build directory"
+    VERBATIM
+)
+add_dependencies(movie-theater-booking copy-config)
+target_include_directories(movie-theater-booking PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/inc")
 target_compile_features(movie-theater-booking PRIVATE cxx_std_20)
 set_target_properties(movie-theater-booking PROPERTIES
     CXX_STANDARD 20
@@ -31,6 +41,7 @@ set_target_properties(movie-theater-booking PROPERTIES
     CXX_EXTENSIONS OFF
 )
 target_link_libraries(movie-theater-booking PRIVATE spdlog::spdlog)
+target_link_libraries(movie-theater-booking PRIVATE Drogon::Drogon)
 target_link_libraries(movie-theater-booking PRIVATE Threads::Threads)
 
 if(CMAKE_SYSTEM_NAME STREQUAL "Linux")
@@ -53,12 +64,17 @@ endif()
 include(CTest)
 if(BUILD_TESTING)
     find_package(GTest CONFIG REQUIRED)
-    add_executable(unit-tests tests/booking_test.cpp src/main.cpp)
-    target_include_directories(unit-tests PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/src")
-    target_compile_definitions(unit-tests PRIVATE MOVIE_THEATER_BOOKING_NO_MAIN)
+    add_executable(unit-tests
+        tests/booking_test.cpp
+        src/config/config.cpp
+        src/DB/DB.cpp
+        src/DB/queries.cpp
+        src/DataModel/Screening.cpp
+    )
+    target_include_directories(unit-tests PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/inc")
     target_compile_features(unit-tests PRIVATE cxx_std_20)
-    target_link_libraries(unit-tests PRIVATE GTest::gtest_main Threads::Threads)
+    target_link_libraries(unit-tests PRIVATE GTest::gtest_main Threads::Threads spdlog::spdlog Drogon::Drogon)
     set_target_properties(unit-tests PROPERTIES CXX_EXTENSIONS OFF)
     include(GoogleTest)
-    gtest_discover_tests(unit-tests PROPERTIES TIMEOUT 15)
+    gtest_discover_tests(unit-tests NO_PRETTY_VALUES PROPERTIES TIMEOUT 15)
 endif()
