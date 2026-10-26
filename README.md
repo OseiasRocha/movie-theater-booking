@@ -46,3 +46,12 @@ Edit `config/db.json` to configure movies, theaters, screenings, and seats. Path
 
 Swagger UI: `http://localhost:8080/docs` (use your configured port; UI assets require internet).
 OpenAPI: `/openapi.json`. Generate C++ documentation with `doxygen Doxyfile`, then open `build/doxygen/html/index.html`.
+
+## Docker
+
+```sh
+docker build -t movie-theater-booking:local .
+docker run --rm -p 8080:8080 movie-theater-booking:local
+```
+
+The image includes `config/db.json`, runs as a non-root user, and accepts the same CLI options and environment variables.
