@@ -10,7 +10,7 @@ class CppTemplate(ConanFile):
     package_type = "application"
     required_conan_version = ">=2.2 <3"
     settings = "os", "compiler", "build_type", "arch"
-    exports_sources = "CMakeLists.txt", "src/*", "tests/*"
+    exports_sources = "CMakeLists.txt", "src/*", "inc/*", "config/*", "docs/*", "tests/*"
     default_options = {
         "drogon/*:with_boost": False,
         "trantor/*:with_spdlog": True,

@@ -24,7 +24,15 @@ find_package(Drogon CONFIG REQUIRED)
 set(THREADS_PREFER_PTHREAD_FLAG ON)
 find_package(Threads REQUIRED)
 
-add_executable(movie-theater-booking src/main.cpp src/DB/queries.cpp src/DB/DB.cpp src/DataModel/Screening.cpp src/config/config.cpp)
+# Embed the specification and UI so documentation works from any working directory.
+set_property(DIRECTORY APPEND PROPERTY CMAKE_CONFIGURE_DEPENDS
+    "${CMAKE_CURRENT_SOURCE_DIR}/docs/openapi.json"
+    "${CMAKE_CURRENT_SOURCE_DIR}/docs/swagger.html")
+file(READ "${CMAKE_CURRENT_SOURCE_DIR}/docs/openapi.json" OPENAPI_JSON)
+file(READ "${CMAKE_CURRENT_SOURCE_DIR}/docs/swagger.html" SWAGGER_HTML)
+configure_file(docs/assets.h.in generated/api_docs_assets.h @ONLY)
+
+add_executable(movie-theater-booking src/main.cpp src/api/docs.cpp src/DB/queries.cpp src/DB/DB.cpp src/DataModel/Screening.cpp src/config/config.cpp)
 add_custom_target(copy-config
     COMMAND ${CMAKE_COMMAND} -E copy_directory
         "${CMAKE_CURRENT_SOURCE_DIR}/config"
@@ -34,6 +42,7 @@ add_custom_target(copy-config
 )
 add_dependencies(movie-theater-booking copy-config)
 target_include_directories(movie-theater-booking PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/inc")
+target_include_directories(movie-theater-booking PRIVATE "${CMAKE_CURRENT_BINARY_DIR}/generated")
 target_compile_features(movie-theater-booking PRIVATE cxx_std_20)
 set_target_properties(movie-theater-booking PROPERTIES
     CXX_STANDARD 20

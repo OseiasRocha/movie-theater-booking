@@ -50,6 +50,32 @@ Command-line options initialize `Configs` before the DB; subsequent singleton
 access reuses those settings. `CONFIG_DB_FILE_PATH` continues to use its
 environment variable independently.
 
+## API documentation
+
+With the server running, open `http://localhost:8080/docs` for Swagger UI.
+Use your configured port if different. The OpenAPI 3.0 specification is served
+at `/openapi.json`; Swagger's **Try it out** calls the same server.
+
+The documentation covers `GET /movies`, `GET /theaters`, `GET /theater`,
+`GET /screenings`, `GET /available_seats`, and `POST /bookings`, including
+parameters, JSON schemas, examples, and error responses. `/screenings` returns
+full records without filters, or matching IDs when both `movieId` and
+`theaterId` are supplied.
+
+Edit `docs/openapi.json` when changing the API. CMake embeds the specification
+and `docs/swagger.html` in the executable and regenerates them on rebuild.
+The browser loads Swagger UI 5.17.14 from jsDelivr, so the interactive UI needs
+internet access; `/openapi.json` is available without it. The external online
+specification validator is disabled.
+
+Run the documentation/API integration tests with Python 3 (standard library
+only). They start a separate localhost server with temporary database data:
+
+```sh
+cmake --build build --target movie-theater-booking
+python3 tests/openapi_test.py build/movie-theater-booking
+```
+
 ## Windows build and run
 
 In a Visual Studio developer PowerShell terminal for the target architecture:

@@ -1,0 +1,6 @@
+#pragma once
+
+namespace api::assets {
+inline constexpr char openapi[] = R"openapi(@OPENAPI_JSON@)openapi";
+inline constexpr char swaggerUi[] = R"swagger(@SWAGGER_HTML@)swagger";
+}
