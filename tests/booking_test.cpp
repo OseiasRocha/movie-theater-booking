@@ -477,11 +477,7 @@ TEST_F(ConfigFileTest, LoadsDefaultPathWhenEnvironmentIsUnset) {
    std::filesystem::copy_file(path, directory / "config/db.json");
    EXPECT_EXIT(
       {
-#ifdef _WIN32
-         _putenv_s("CONFIG_DB_FILE_PATH", "");
-#else
-         unsetenv("CONFIG_DB_FILE_PATH");
-#endif
+         setEnvironment("CONFIG_DB_FILE_PATH", nullptr);
          std::filesystem::current_path(directory);
          EXPECT_EQ(Configs::getInstance().getMovies(), validConfig()["movies"]);
          std::exit(testing::Test::HasFailure() ? 1 : 0);
