@@ -1,3 +1,8 @@
+/**
+ * @file
+ * @brief Parse startup arguments, register REST endpoints, and run the HTTP server.
+ */
+
 #include "DB/DB.h"
 #include "DB/queries.h"
 #include "api/docs.h"
@@ -5,11 +10,14 @@
 #include <algorithm>
 #include <array>
 #include <charconv>
+#include <cstdint>
 #include <cstdlib>
 #include <drogon/HttpAppFramework.h>
 #include <drogon/HttpRequest.h>
-#include <drogon/drogon.h>
+#include <drogon/HttpResponse.h>
+#include <drogon/HttpTypes.h>
 #include <exception>
+#include <functional>
 #include <json/value.h>
 #include <memory>
 #include <optional>
@@ -20,23 +28,38 @@
 #include <stdexcept>
 #include <string>
 #include <string_view>
+#include <system_error>
+#include <thread>
 #include <trantor/utils/Logger.h>
+#include <utility>
 #include <vector>
 
-// Unit tests compile this file with GoogleTest's entry point instead.
+// Define MOVIE_THEATER_BOOKING_NO_MAIN to omit startup and endpoint definitions.
 #ifndef MOVIE_THEATER_BOOKING_NO_MAIN
 
 namespace {
+
 struct CommandLineArguments {
+   /// @brief Bind-address override for ADDRESS.
    std::optional<std::string_view> address;
+   /// @brief Unparsed decimal override for PORT.
    std::optional<std::string_view> port;
+   /// @brief Log-level override for LOG_LEVEL.
    std::optional<std::string_view> logLevel;
 };
 
+/**
+ * @brief Parse --address, --port, and --log-level as separate option/value pairs.
+ * @throws std::invalid_argument For unknown options, repeated options, or missing values.
+ * @note Value validation is performed by config::Configs. The --option=value form is unsupported.
+ */
 CommandLineArguments parseArguments(int argc, char* argv[]) {
    CommandLineArguments arguments;
+   /// @brief Bind a recognized option name to the optional value populated by parsing.
    struct Option {
+      /// @brief Literal command-line option name.
       std::string_view name;
+      /// @brief Reference to the corresponding field in the returned arguments.
       std::optional<std::string_view>& value;
    };
    const std::array<Option, 3> options{{
@@ -63,6 +86,27 @@ CommandLineArguments parseArguments(int argc, char* argv[]) {
 }
 } // namespace
 
+/**
+ * @brief Register the application's JSON HTTP handlers before starting the server.
+ * @param logger Logger captured by value so each stored handler keeps it alive.
+ * @pre Call once before drogon::app().run(), after configuration and DB initialization.
+ *
+ * @par Read endpoints
+ * GET /movies returns movie IDs and names (the name field is called movie).
+ * GET /theaters returns theater IDs and names. GET /theater?movieId=... filters
+ * theaters by movie. GET /screenings lists full records; supplying both movieId
+ * and theaterId returns matching screening IDs. GET /available_seats?screeningId=...
+ * returns the unbooked seats for that screening. Invalid ID parameters return HTTP 400.
+ *
+ * @par Booking endpoint
+ * POST /bookings accepts an unsigned screeningId and 1 to MAX_SEATS unique,
+ * nonempty string labels in seats. Malformed requests return HTTP 400, booking
+ * failure returns HTTP 409, and success returns HTTP 200 with the booked labels.
+ * Booking validation and mutation execute together under the database write lock.
+ *
+ * @note Read responses are owning snapshots. Detailed JSON schemas and examples are
+ * in docs/openapi.json.
+ */
 void setupEndpoints(std::shared_ptr<spdlog::logger> logger) {
    drogon::app().registerHandler(
       "/bookings",

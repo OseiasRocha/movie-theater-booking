@@ -1,3 +1,8 @@
+/**
+ * @file
+ * @brief Serve build-time embedded documentation through Drogon.
+ */
+
 #include "api/docs.h"
 #include "api_docs_assets.h"
 #include <drogon/HttpAppFramework.h>

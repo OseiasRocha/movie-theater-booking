@@ -1,3 +1,8 @@
+/**
+ * @file
+ * @brief Populate database maps from validated configuration records.
+ */
+
 #include "DB/DB.h"
 #include "DataModel/Seat.h"
 #include "config/config.h"

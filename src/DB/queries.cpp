@@ -1,22 +1,29 @@
+/**
+ * @file
+ * @brief Implement read snapshots, screening filters, and booking commands.
+ */
+
 #include "DB/queries.h"
+#include "DB/DB.h"
+#include "DataModel/Movie.h"
 #include "DataModel/Screening.h"
 #include "DataModel/Seat.h"
 #include "DataModel/Theater.h"
 #include <algorithm>
-#include <limits>
+#include <cstdint>
 #include <memory>
 #include <optional>
 #include <ranges>
 #include <spdlog/fmt/ranges.h>
 #include <spdlog/logger.h>
 #include <spdlog/sinks/stdout_color_sinks.h>
-#include <spdlog/spdlog.h>
 #include <unordered_set>
 #include <vector>
 
 using namespace db;
 using namespace queries;
 
+/// @brief Registered logger shared by all query implementations.
 static std::shared_ptr<spdlog::logger> logger = spdlog::stdout_color_mt("Queries");
 
 std::vector<datamodel::Movie> GetAllMovies::execute(const Storage& storage) const {

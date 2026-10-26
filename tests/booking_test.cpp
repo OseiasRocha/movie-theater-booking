@@ -1,7 +1,20 @@
+/**
+ * @file
+ * @brief Regression tests for configuration, data models, database snapshots, and concurrency.
+ */
+
 #include "DB/DB.h"
 #include "DB/queries.h"
 #include "DataModel/Screening.h"
 #include "config/config.h"
+#include <cstddef>
+#include <cstdint>
+#include <json/reader.h>
+#include <json/value.h>
+#include <optional>
+#include <stdexcept>
+#include <string_view>
+#include <utility>
 
 #include <atomic>
 #include <barrier>
@@ -19,6 +32,16 @@
 #include <type_traits>
 #include <vector>
 
+/**
+ * @defgroup unit_tests Unit and regression tests
+ * @brief Configuration validation, model behavior, DB ownership, and concurrency checks.
+ *
+ * Configuration and database singleton tests run in EXPECT_EXIT child processes.
+ * The parent never initializes those singletons, giving each case fresh startup state.
+ * Competing booking tests use barriers to start workers together and join before assertions.
+ */
+/// @addtogroup unit_tests
+/// @{
 namespace {
 
 using config::Configs;
@@ -28,6 +51,7 @@ using queries::GetMovieByName;
 using queries::GetTheatersWithMovie;
 using queries::MakeBooking;
 
+/** @test LoggingTest: trantor has spdlog support. */
 TEST(LoggingTest, TrantorHasSpdlogSupport) {
    EXPECT_TRUE(trantor::Logger::hasSpdLogSupport())
       << "Reinstall Conan dependencies with trantor/*:with_spdlog=True and rebuild.";
@@ -37,17 +61,19 @@ static_assert(db::WriteQuery<MakeBooking>);
 static_assert(!db::ReadQuery<MakeBooking>);
 static_assert(std::is_const_v<std::remove_reference_t<decltype(std::declval<const db::Storage&>().screenings())>>);
 
+/** @test ScreeningTest: multiple instances keep independent bookings. */
 TEST(ScreeningTest, MultipleInstancesKeepIndependentBookings) {
-   datamodel::Screening first{10, 1, {datamodel::Seat{"A1"}}};
-   datamodel::Screening second{10, 2, {datamodel::Seat{"A1"}}};
+   datamodel::Screening first{100, 10, 1, {datamodel::Seat{"A1"}}};
+   datamodel::Screening second{101, 10, 2, {datamodel::Seat{"A1"}}};
    EXPECT_TRUE(first.makeBooking({"A1"}));
    EXPECT_TRUE(first.availableSeats().empty());
    ASSERT_EQ(second.availableSeats().size(), 1u);
    EXPECT_TRUE(second.makeBooking({"A1"}));
 }
 
+/** @test ScreeningTest: booking validates entire request before changing seats. */
 TEST(ScreeningTest, BookingValidatesEntireRequestBeforeChangingSeats) {
-   datamodel::Screening screening{10, 1, {datamodel::Seat{"A1"}, datamodel::Seat{"A2"}}};
+   datamodel::Screening screening{100, 10, 1, {datamodel::Seat{"A1"}, datamodel::Seat{"A2"}}};
    EXPECT_FALSE(screening.makeBooking({}));
    EXPECT_FALSE(screening.makeBooking({"A1", "missing"}));
    EXPECT_FALSE(screening.makeBooking({"A1", "A1"}));
@@ -63,20 +89,23 @@ TEST(ScreeningTest, BookingValidatesEntireRequestBeforeChangingSeats) {
    EXPECT_TRUE(screening.availableSeats().empty());
 }
 
+/** @test ScreeningTest: books multiple seats together. */
 TEST(ScreeningTest, BooksMultipleSeatsTogether) {
-   datamodel::Screening screening{10, 1, {datamodel::Seat{"A1"}, datamodel::Seat{"A2"}}};
+   datamodel::Screening screening{100, 10, 1, {datamodel::Seat{"A1"}, datamodel::Seat{"A2"}}};
    EXPECT_TRUE(screening.makeBooking({"A2", "A1"}));
    EXPECT_TRUE(screening.availableSeats().empty());
 }
 
+/** @test ScreeningTest: empty screening rejects booking. */
 TEST(ScreeningTest, EmptyScreeningRejectsBooking) {
-   datamodel::Screening screening{10, 1, {}};
+   datamodel::Screening screening{100, 10, 1, {}};
    EXPECT_FALSE(screening.makeBooking({"A1"}));
    EXPECT_FALSE(screening.makeBooking({}));
 }
 
+/** @test ScreeningTest: available seats returns independent snapshots from const screening. */
 TEST(ScreeningTest, AvailableSeatsReturnsIndependentSnapshotsFromConstScreening) {
-   const datamodel::Screening screening{10, 1, {datamodel::Seat{"A1"}, datamodel::Seat{"A2"}}};
+   const datamodel::Screening screening{100, 10, 1, {datamodel::Seat{"A1"}, datamodel::Seat{"A2"}}};
    auto seats = screening.availableSeats();
    ASSERT_EQ(seats.size(), 2u);
    EXPECT_EQ(seats[0].seat(), "A1");
@@ -92,16 +121,19 @@ TEST(ScreeningTest, AvailableSeatsReturnsIndependentSnapshotsFromConstScreening)
    EXPECT_FALSE(secondSnapshot[1].isBooked());
 }
 
+/** @test ScreeningTest: available seats of empty screening is empty. */
 TEST(ScreeningTest, AvailableSeatsOfEmptyScreeningIsEmpty) {
-   const datamodel::Screening screening{10, 1, {}};
+   const datamodel::Screening screening{100, 10, 1, {}};
    EXPECT_TRUE(screening.availableSeats().empty());
 }
 
+/** @test ScreeningTest: rejects construction above capacity. */
 TEST(ScreeningTest, RejectsConstructionAboveCapacity) {
    const std::vector<datamodel::Seat> seats(datamodel::Screening::MAX_SEATS + 1, datamodel::Seat{"A1"});
-   EXPECT_THROW((datamodel::Screening{10, 1, seats}), std::length_error);
+   EXPECT_THROW((datamodel::Screening{100, 10, 1, seats}), std::length_error);
 }
 
+/** @test ScreeningTest: books entire capacity and rejects oversized request without changes. */
 TEST(ScreeningTest, BooksEntireCapacityAndRejectsOversizedRequestWithoutChanges) {
    std::vector<datamodel::Seat> seats;
    std::vector<std::string> names;
@@ -109,7 +141,7 @@ TEST(ScreeningTest, BooksEntireCapacityAndRejectsOversizedRequestWithoutChanges)
       names.push_back("A" + std::to_string(i));
       seats.emplace_back(names.back());
    }
-   datamodel::Screening screening{10, 1, seats};
+   datamodel::Screening screening{100, 10, 1, seats};
    auto oversized = names;
    oversized.push_back("extra");
    EXPECT_FALSE(screening.makeBooking(oversized));
@@ -119,17 +151,20 @@ TEST(ScreeningTest, BooksEntireCapacityAndRejectsOversizedRequestWithoutChanges)
    EXPECT_FALSE(screening.makeBooking(names));
 }
 
+/** @test ScreeningTest: non adjacent duplicate does not book earlier seats. */
 TEST(ScreeningTest, NonAdjacentDuplicateDoesNotBookEarlierSeats) {
-   datamodel::Screening screening{10, 1, {datamodel::Seat{"A1"}, datamodel::Seat{"A2"}, datamodel::Seat{"A3"}}};
+   datamodel::Screening screening{100, 10, 1, {datamodel::Seat{"A1"}, datamodel::Seat{"A2"}, datamodel::Seat{"A3"}}};
    EXPECT_FALSE(screening.makeBooking({"A1", "A2", "A1"}));
    EXPECT_EQ(screening.availableSeats().size(), 3u);
    EXPECT_TRUE(screening.makeBooking({"A1", "A2", "A3"}));
 }
 
+/** @test ScreeningTest: preserves pre booked seats and finds remaining seats across gaps. */
 TEST(ScreeningTest, PreservesPreBookedSeatsAndFindsRemainingSeatsAcrossGaps) {
    datamodel::Seat booked{"A2"};
    booked.setIsBooked(true);
-   datamodel::Screening screening{10, 1, {datamodel::Seat{"A1"}, booked, datamodel::Seat{"A3"}, datamodel::Seat{"A4"}}};
+   datamodel::Screening screening{
+      100, 10, 1, {datamodel::Seat{"A1"}, booked, datamodel::Seat{"A3"}, datamodel::Seat{"A4"}}};
    EXPECT_FALSE(screening.makeBooking({"A1", "A2"}));
    EXPECT_EQ(screening.availableSeats().size(), 3u);
    EXPECT_TRUE(screening.makeBooking({"A3"}));
@@ -146,14 +181,20 @@ TEST(ScreeningTest, PreservesPreBookedSeatsAndFindsRemainingSeatsAcrossGaps) {
    EXPECT_TRUE(screening.availableSeats().empty());
 }
 
+/** @test ScreeningTest: seat names require exact match. */
 TEST(ScreeningTest, SeatNamesRequireExactMatch) {
-   datamodel::Screening screening{10, 1, {datamodel::Seat{"A1"}}};
+   datamodel::Screening screening{100, 10, 1, {datamodel::Seat{"A1"}}};
    for (const std::string name : {"a1", "A", "A1 ", " A1"}) {
       EXPECT_FALSE(screening.makeBooking({name})) << name;
    }
    EXPECT_TRUE(screening.makeBooking({"A1"}));
 }
 
+/**
+ * @brief Build a valid database fixture with unscheduled movies and repeated movie/theater pairs.
+ * @return A mutable JSON document that each test can customize independently.
+ * @throws std::runtime_error If the embedded fixture JSON cannot be parsed.
+ */
 Json::Value validConfig() {
    Json::Value root;
    Json::Reader reader;
@@ -175,6 +216,13 @@ Json::Value validConfig() {
    return root;
 }
 
+/**
+ * @brief Set or unset a process environment variable for isolated startup tests.
+ * @param name Variable name.
+ * @param value Replacement value, or nullptr to unset it (empty on Windows).
+ * @throws std::runtime_error If the platform environment update fails.
+ * @note Use in child processes to avoid affecting other tests or threads.
+ */
 void setEnvironment(const char* name, const char* value) {
 #ifdef _WIN32
    if (_putenv_s(name, value == nullptr ? "" : value) != 0) {
@@ -185,13 +233,23 @@ void setEnvironment(const char* name, const char* value) {
    }
 }
 
+/** @brief Point configuration loading at an isolated test document.
+ * @param path Database JSON file to load in the child process.
+ */
 void setConfigPath(const std::filesystem::path& path) { setEnvironment("CONFIG_DB_FILE_PATH", path.string().c_str()); }
 
+/**
+ * @brief Fixture owning a temporary configuration file for singleton initialization tests.
+ * @details Each test modifies its own document; child processes consume it and exit.
+ */
 class ConfigFileTest : public testing::Test {
  protected:
+   /// @brief Unique temporary directory removed after each test.
    std::filesystem::path directory;
+   /// @brief Database JSON path within the temporary directory.
    std::filesystem::path path;
 
+   /// @brief Create an isolated directory and write a valid initial configuration.
    void SetUp() override {
       static std::atomic<unsigned> sequence{0};
       const auto stamp = std::chrono::steady_clock::now().time_since_epoch().count();
@@ -202,11 +260,15 @@ class ConfigFileTest : public testing::Test {
       write(validConfig().toStyledString());
    }
 
+   /// @brief Remove temporary files without throwing from cleanup.
    void TearDown() override {
       std::error_code error;
       std::filesystem::remove_all(directory, error);
    }
 
+   /** @brief Replace the fixture JSON file and assert successful writing.
+    * @param contents Serialized document to write, including intentionally invalid input.
+    */
    void write(const std::string& contents) {
       std::ofstream file(path);
       file << contents;
@@ -215,6 +277,10 @@ class ConfigFileTest : public testing::Test {
    }
 
    // Each child initializes its own singletons; the parent never initializes them.
+   /**
+    * @brief Assert that Configs initialization fails in a fresh child process.
+    * @param message Regular expression matched against the reported exception message.
+    */
    void expectRejected(const std::string& message) {
       EXPECT_EXIT(
          {
@@ -231,6 +297,7 @@ class ConfigFileTest : public testing::Test {
    }
 };
 
+/** @test ConfigFileTest: loads arrays and reuses singleton. */
 TEST_F(ConfigFileTest, LoadsArraysAndReusesSingleton) {
    EXPECT_EXIT(
       {
@@ -245,6 +312,7 @@ TEST_F(ConfigFileTest, LoadsArraysAndReusesSingleton) {
       testing::ExitedWithCode(0), "");
 }
 
+/** @test ConfigFileTest: server overrides ignore invalid environment values. */
 TEST_F(ConfigFileTest, ServerOverridesIgnoreInvalidEnvironmentValues) {
    EXPECT_EXIT(
       {
@@ -263,6 +331,7 @@ TEST_F(ConfigFileTest, ServerOverridesIgnoreInvalidEnvironmentValues) {
       testing::ExitedWithCode(0), "");
 }
 
+/** @test ConfigFileTest: log level uses environment and validates overrides. */
 TEST_F(ConfigFileTest, LogLevelUsesEnvironmentAndValidatesOverrides) {
    EXPECT_EXIT(
       {
@@ -288,6 +357,7 @@ TEST_F(ConfigFileTest, LogLevelUsesEnvironmentAndValidatesOverrides) {
    }
 }
 
+/** @test ConfigFileTest: log level defaults to info. */
 TEST_F(ConfigFileTest, LogLevelDefaultsToInfo) {
    EXPECT_EXIT(
       {
@@ -299,6 +369,7 @@ TEST_F(ConfigFileTest, LogLevelDefaultsToInfo) {
       testing::ExitedWithCode(0), "");
 }
 
+/** @test ConfigFileTest: address override still uses environment port. */
 TEST_F(ConfigFileTest, AddressOverrideStillUsesEnvironmentPort) {
    EXPECT_EXIT(
       {
@@ -313,6 +384,7 @@ TEST_F(ConfigFileTest, AddressOverrideStillUsesEnvironmentPort) {
       testing::ExitedWithCode(0), "");
 }
 
+/** @test ConfigFileTest: port override still uses environment address. */
 TEST_F(ConfigFileTest, PortOverrideStillUsesEnvironmentAddress) {
    EXPECT_EXIT(
       {
@@ -327,6 +399,7 @@ TEST_F(ConfigFileTest, PortOverrideStillUsesEnvironmentAddress) {
       testing::ExitedWithCode(0), "");
 }
 
+/** @test ConfigFileTest: server settings use environment without overrides. */
 TEST_F(ConfigFileTest, ServerSettingsUseEnvironmentWithoutOverrides) {
    EXPECT_EXIT(
       {
@@ -341,6 +414,7 @@ TEST_F(ConfigFileTest, ServerSettingsUseEnvironmentWithoutOverrides) {
       testing::ExitedWithCode(0), "");
 }
 
+/** @test ConfigFileTest: server settings use defaults without environment or overrides. */
 TEST_F(ConfigFileTest, ServerSettingsUseDefaultsWithoutEnvironmentOrOverrides) {
    EXPECT_EXIT(
       {
@@ -355,6 +429,7 @@ TEST_F(ConfigFileTest, ServerSettingsUseDefaultsWithoutEnvironmentOrOverrides) {
       testing::ExitedWithCode(0), "");
 }
 
+/** @test ConfigFileTest: rejects invalid ports from overrides and environment. */
 TEST_F(ConfigFileTest, RejectsInvalidPortsFromOverridesAndEnvironment) {
    for (const char* port : {"", "0", "65536", "-1", "80abc", "1.5", " 80", "99999999999999999999"}) {
       SCOPED_TRACE(port);
@@ -378,6 +453,7 @@ TEST_F(ConfigFileTest, RejectsInvalidPortsFromOverridesAndEnvironment) {
    }
 }
 
+/** @test ConfigFileTest: empty address override does not fall back to environment. */
 TEST_F(ConfigFileTest, EmptyAddressOverrideDoesNotFallBackToEnvironment) {
    EXPECT_EXIT(
       {
@@ -394,6 +470,7 @@ TEST_F(ConfigFileTest, EmptyAddressOverrideDoesNotFallBackToEnvironment) {
       testing::ExitedWithCode(1), "Address must not be empty");
 }
 
+/** @test ConfigFileTest: loads default path when environment is unset. */
 TEST_F(ConfigFileTest, LoadsDefaultPathWhenEnvironmentIsUnset) {
    std::filesystem::create_directory(directory / "config");
    std::filesystem::copy_file(path, directory / "config/db.json");
@@ -411,26 +488,31 @@ TEST_F(ConfigFileTest, LoadsDefaultPathWhenEnvironmentIsUnset) {
       testing::ExitedWithCode(0), "");
 }
 
+/** @test ConfigFileTest: rejects missing file. */
 TEST_F(ConfigFileTest, RejectsMissingFile) {
    std::filesystem::remove(path);
    expectRejected("Failed to open config file");
 }
 
+/** @test ConfigFileTest: rejects malformed json. */
 TEST_F(ConfigFileTest, RejectsMalformedJson) {
    write("{ invalid");
    expectRejected("Failed to parse");
 }
 
+/** @test ConfigFileTest: rejects duplicate json keys. */
 TEST_F(ConfigFileTest, RejectsDuplicateJsonKeys) {
    write(R"({"movies": [], "movies": [], "theaters": [], "screenings": []})");
    expectRejected("Failed to parse");
 }
 
+/** @test ConfigFileTest: rejects trailing json. */
 TEST_F(ConfigFileTest, RejectsTrailingJson) {
    write(validConfig().toStyledString() + "{}");
    expectRejected("Failed to parse");
 }
 
+/** @test ConfigFileTest: rejects empty seats. */
 TEST_F(ConfigFileTest, RejectsEmptySeats) {
    auto config = validConfig();
    config["screenings"][0]["seats"] = Json::Value(Json::arrayValue);
@@ -438,6 +520,7 @@ TEST_F(ConfigFileTest, RejectsEmptySeats) {
    expectRejected("Screening 100 must have at least one seat");
 }
 
+/** @test ConfigFileTest: accepts empty database. */
 TEST_F(ConfigFileTest, AcceptsEmptyDatabase) {
    Json::Value config;
    for (const char* key : {"movies", "theaters", "screenings"}) {
@@ -457,12 +540,19 @@ TEST_F(ConfigFileTest, AcceptsEmptyDatabase) {
       testing::ExitedWithCode(0), "");
 }
 
+/** @brief Named malformed document and expected validation diagnostic. */
 struct InvalidConfig {
+   /// @brief Stable parameterized-test case name.
    std::string name;
+   /// @brief Malformed document written by the parameterized case.
    Json::Value document;
+   /// @brief Expected diagnostic regular expression.
    std::string message;
 };
 
+/** @brief Generate independent mutations testing malformed fields, IDs, references, and seat limits.
+ * @return Named invalid configurations and their expected exception diagnostics.
+ */
 std::vector<InvalidConfig> invalidConfigs() {
    std::vector<InvalidConfig> cases;
    auto add = [&](const std::string& name, auto mutate, const std::string& message) {
@@ -517,16 +607,20 @@ std::vector<InvalidConfig> invalidConfigs() {
    return cases;
 }
 
+/** @brief Apply each invalid document to the isolated configuration fixture. */
 class ConfigValidationTest : public ConfigFileTest, public testing::WithParamInterface<InvalidConfig> {};
 
+/** @test ConfigValidationTest: rejects invalid input. */
 TEST_P(ConfigValidationTest, RejectsInvalidInput) {
    write(GetParam().document.toStyledString());
    expectRejected(GetParam().message);
 }
 
+/** @brief Register one configuration rejection test per named malformed document. */
 INSTANTIATE_TEST_SUITE_P(Validation, ConfigValidationTest, testing::ValuesIn(invalidConfigs()),
                          [](const auto& info) { return info.param.name; });
 
+/** @test ConfigFileTest: accepts maximum seat count. */
 TEST_F(ConfigFileTest, AcceptsMaximumSeatCount) {
    auto config = validConfig();
    auto& seats = config["screenings"][0]["seats"];
@@ -546,6 +640,7 @@ TEST_F(ConfigFileTest, AcceptsMaximumSeatCount) {
       testing::ExitedWithCode(0), "");
 }
 
+/** @test ConfigFileTest: database loads movies and finds names. */
 TEST_F(ConfigFileTest, DatabaseLoadsMoviesAndFindsNames) {
    EXPECT_EXIT(
       {
@@ -580,6 +675,7 @@ TEST_F(ConfigFileTest, DatabaseLoadsMoviesAndFindsNames) {
       testing::ExitedWithCode(0), "");
 }
 
+/** @test ConfigFileTest: database finds distinct theaters by movie. */
 TEST_F(ConfigFileTest, DatabaseFindsDistinctTheatersByMovie) {
    EXPECT_EXIT(
       {
@@ -601,6 +697,7 @@ TEST_F(ConfigFileTest, DatabaseFindsDistinctTheatersByMovie) {
       testing::ExitedWithCode(0), "");
 }
 
+/** @test ConfigFileTest: database returns only configured seats and independent snapshots. */
 TEST_F(ConfigFileTest, DatabaseReturnsOnlyConfiguredSeatsAndIndependentSnapshots) {
    EXPECT_EXIT(
       {
@@ -625,6 +722,7 @@ TEST_F(ConfigFileTest, DatabaseReturnsOnlyConfiguredSeatsAndIndependentSnapshots
       testing::ExitedWithCode(0), "");
 }
 
+/** @test ConfigFileTest: database bookings persist and reject invalid requests without changes. */
 TEST_F(ConfigFileTest, DatabaseBookingsPersistAndRejectInvalidRequestsWithoutChanges) {
    EXPECT_EXIT(
       {
@@ -650,6 +748,7 @@ TEST_F(ConfigFileTest, DatabaseBookingsPersistAndRejectInvalidRequestsWithoutCha
       testing::ExitedWithCode(0), "");
 }
 
+/** @test ConfigFileTest: exactly one concurrent booking wins. */
 TEST_F(ConfigFileTest, ExactlyOneConcurrentBookingWins) {
    EXPECT_EXIT(
       {
@@ -675,6 +774,7 @@ TEST_F(ConfigFileTest, ExactlyOneConcurrentBookingWins) {
       testing::ExitedWithCode(0), "");
 }
 
+/** @test ConfigFileTest: readers never see partially applied booking. */
 TEST_F(ConfigFileTest, ReadersNeverSeePartiallyAppliedBooking) {
    EXPECT_EXIT(
       {
@@ -709,6 +809,7 @@ TEST_F(ConfigFileTest, ReadersNeverSeePartiallyAppliedBooking) {
       testing::ExitedWithCode(0), "");
 }
 
+/** @test ConfigFileTest: database supports concurrent reads. */
 TEST_F(ConfigFileTest, DatabaseSupportsConcurrentReads) {
    EXPECT_EXIT(
       {
@@ -735,6 +836,7 @@ TEST_F(ConfigFileTest, DatabaseSupportsConcurrentReads) {
       testing::ExitedWithCode(0), "");
 }
 
+/** @test ConfigFileTest: movie lookup respects string view length. */
 TEST_F(ConfigFileTest, MovieLookupRespectsStringViewLength) {
    EXPECT_EXIT(
       {
@@ -751,6 +853,7 @@ TEST_F(ConfigFileTest, MovieLookupRespectsStringViewLength) {
       testing::ExitedWithCode(0), "");
 }
 
+/** @test ConfigFileTest: booking owns input and snapshots remain independent. */
 TEST_F(ConfigFileTest, BookingOwnsInputAndSnapshotsRemainIndependent) {
    EXPECT_EXIT(
       {
@@ -776,6 +879,7 @@ TEST_F(ConfigFileTest, BookingOwnsInputAndSnapshotsRemainIndependent) {
       testing::ExitedWithCode(0), "");
 }
 
+/** @test ConfigFileTest: overlapping concurrent bookings do not partially book losing request. */
 TEST_F(ConfigFileTest, OverlappingConcurrentBookingsDoNotPartiallyBookLosingRequest) {
    auto config = validConfig();
    Json::Value seat;
@@ -808,6 +912,7 @@ TEST_F(ConfigFileTest, OverlappingConcurrentBookingsDoNotPartiallyBookLosingRequ
       testing::ExitedWithCode(0), "");
 }
 
+/** @test ConfigFileTest: disjoint concurrent bookings both succeed. */
 TEST_F(ConfigFileTest, DisjointConcurrentBookingsBothSucceed) {
    EXPECT_EXIT(
       {
@@ -835,3 +940,5 @@ TEST_F(ConfigFileTest, DisjointConcurrentBookingsBothSucceed) {
 }
 
 } // namespace
+
+/// @}

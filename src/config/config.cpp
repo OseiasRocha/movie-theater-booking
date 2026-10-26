@@ -1,17 +1,21 @@
+/**
+ * @file
+ * @brief Resolve environment settings, parse JSON, and validate database configuration.
+ */
+
 #include "config/config.h"
 #include "DataModel/Screening.h"
 #include <charconv>
 #include <cstdint>
 #include <cstdlib>
 #include <fstream>
-#include <ios>
-#include <json/json.h>
 #include <json/reader.h>
 #include <json/value.h>
 #include <set>
-#include <spdlog/spdlog.h>
+#include <spdlog/common.h>
 #include <stdexcept>
 #include <string>
+#include <system_error>
 
 using namespace config;
 
