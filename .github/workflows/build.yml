@@ -72,7 +72,12 @@ jobs:
       - name: Build image and run unit tests
         run: docker build --pull --tag movie-theater-booking:ci .
       - name: Run application in runtime image
-        run: docker run --rm movie-theater-booking:ci
+        run: |
+          container_id=$(docker run --detach --publish 127.0.0.1::8080 movie-theater-booking:ci)
+          trap 'docker logs "$container_id"; docker rm --force "$container_id"' EXIT
+          host_port=$(docker inspect --format '{{(index (index .NetworkSettings.Ports "8080/tcp") 0).HostPort}}' "$container_id")
+          curl --fail --retry 30 --retry-connrefused --retry-delay 1 "http://127.0.0.1:${host_port}/movies"
+          curl --fail "http://127.0.0.1:${host_port}/openapi.json"
       - name: Save tested image for publication
         if: github.event_name == 'release'
         run: docker save movie-theater-booking:ci | gzip > docker-image.tar.gz
