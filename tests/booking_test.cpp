@@ -29,6 +29,7 @@
 #include <string>
 #include <thread>
 #include <trantor/utils/Logger.h>
+#include <tuple>
 #include <type_traits>
 #include <vector>
 
@@ -535,6 +536,8 @@ TEST_F(ConfigFileTest, AcceptsEmptyDatabase) {
          EXPECT_TRUE(db::DB::getInstance().query(GetTheatersWithMovie{1}).empty());
          EXPECT_FALSE(db::DB::getInstance().query(GetMovieByName{"missing"}));
          EXPECT_TRUE(db::DB::getInstance().query(GetAvailableSeats{100}).empty());
+         EXPECT_TRUE(db::DB::getInstance().query(queries::GetAllScreenings{}).empty());
+         EXPECT_TRUE(db::DB::getInstance().query(queries::GetScreeningsWithMovieAndTheater{1, 10}).empty());
          std::exit(testing::Test::HasFailure() ? 1 : 0);
       },
       testing::ExitedWithCode(0), "");
@@ -717,6 +720,37 @@ TEST_F(ConfigFileTest, DatabaseReturnsOnlyConfiguredSeatsAndIndependentSnapshots
          ASSERT_EQ(last.size(), 1u);
          EXPECT_EQ(last[0].seat(), "D1");
          EXPECT_TRUE(database.query(GetAvailableSeats{999}).empty());
+         std::exit(testing::Test::HasFailure() ? 1 : 0);
+      },
+      testing::ExitedWithCode(0), "");
+}
+
+/** @test ConfigFileTest: screening queries return independent identity-only snapshots. */
+TEST_F(ConfigFileTest, ScreeningSummariesPreserveIdentityAndFiltersAfterBooking) {
+   using Keys = std::set<std::tuple<uint32_t, uint32_t, uint32_t>>;
+   static_assert(std::is_trivially_copyable_v<queries::ScreeningSummary>);
+   EXPECT_EXIT(
+      {
+         setConfigPath(path);
+         auto& database = db::DB::getInstance();
+         const auto keys = [](const auto& rows) {
+            Keys result;
+            for (const auto& row : rows) {
+               result.emplace(row.id, row.movieId, row.theaterId);
+            }
+            return result;
+         };
+         const auto expected = (Keys{{100, 1, 10}, {101, 1, 10}, {102, 1, 20}, {103, 2, 20}});
+         auto snapshot = database.query(queries::GetAllScreenings{});
+         EXPECT_EQ(snapshot.size(), 4u);
+         EXPECT_EQ(keys(snapshot), expected);
+         snapshot.front().id = 999;
+         EXPECT_TRUE(database.query(MakeBooking{{"A1"}, 100}));
+         EXPECT_EQ(keys(database.query(queries::GetAllScreenings{})), expected);
+         const auto filtered = database.query(queries::GetScreeningsWithMovieAndTheater{1, 10});
+         EXPECT_EQ(filtered.size(), 2u);
+         EXPECT_EQ(keys(filtered), (Keys{{100, 1, 10}, {101, 1, 10}}));
+         EXPECT_TRUE(database.query(queries::GetScreeningsWithMovieAndTheater{999, 10}).empty());
          std::exit(testing::Test::HasFailure() ? 1 : 0);
       },
       testing::ExitedWithCode(0), "");

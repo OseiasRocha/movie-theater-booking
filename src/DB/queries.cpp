@@ -95,12 +95,12 @@ bool MakeBooking::execute(db::Storage& storage) const {
    }
    return screeningIt->second.makeBooking(m_seatsToBook);
 }
-std::vector<datamodel::Screening> queries::GetAllScreenings::execute(const db::Storage& storage) const {
-   std::vector<datamodel::Screening> result;
+std::vector<ScreeningSummary> queries::GetAllScreenings::execute(const db::Storage& storage) const {
+   std::vector<ScreeningSummary> result;
    result.reserve(storage.screenings().size());
 
    for (const auto& [id, screening] : storage.screenings()) {
-      result.push_back(screening);
+      result.push_back({id, screening.movieId(), screening.theaterId()});
    }
 
    return result;
@@ -117,7 +117,7 @@ std::vector<datamodel::Theater> queries::GetAllTheaters::execute(const db::Stora
 
    return result;
 }
-std::vector<datamodel::Screening> GetScreeningsWithMovieAndTheater::execute(const db::Storage& storage) const {
+std::vector<ScreeningSummary> GetScreeningsWithMovieAndTheater::execute(const db::Storage& storage) const {
 
    auto matches = storage.screenings() | std::views::values | std::views::filter([this](const auto& screening) {
                      return screening.movieId() == m_movieId && screening.theaterId() == m_theaterId;
@@ -128,10 +128,10 @@ std::vector<datamodel::Screening> GetScreeningsWithMovieAndTheater::execute(cons
       return {};
    }
 
-   std::vector<datamodel::Screening> result;
+   std::vector<ScreeningSummary> result;
 
    for (const auto& screening : matches) {
-      result.push_back(screening);
+      result.push_back({screening.id(), screening.movieId(), screening.theaterId()});
    }
 
    return result;

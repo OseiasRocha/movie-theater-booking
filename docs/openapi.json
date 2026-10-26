@@ -128,7 +128,7 @@
         "tags": [
           "Screenings"
         ],
-        "description": "Omit both filters to list full screening records. Supply both movieId and theaterId to return matching screening IDs. Supplying only one filter is invalid. No matches returns an empty array. Seat arrays in full records currently include all fixed-capacity slots, including unused slots with empty names.",
+        "description": "Omit both filters to list screening summaries containing only id, movieId, and theaterId. Supply both movieId and theaterId to return matching screening IDs. Supplying only one filter is invalid. No matches returns an empty array. Seat availability is retrieved separately through /available_seats?screeningId=... .",
         "parameters": [
           {
             "name": "movieId",
@@ -151,7 +151,7 @@
         ],
         "responses": {
           "200": {
-            "description": "Full records without filters; ID-only records with both filters",
+            "description": "Screening summaries without filters; ID-only records with both filters",
             "content": {
               "application/json": {
                 "schema": {
@@ -159,7 +159,7 @@
                   "items": {
                     "anyOf": [
                       {
-                        "$ref": "#/components/schemas/Screening"
+                        "$ref": "#/components/schemas/ScreeningSummary"
                       },
                       {
                         "$ref": "#/components/schemas/ScreeningId"
@@ -370,21 +370,6 @@
           }
         }
       },
-      "Seat": {
-        "type": "object",
-        "required": [
-          "name",
-          "isBooked"
-        ],
-        "properties": {
-          "name": {
-            "type": "string"
-          },
-          "isBooked": {
-            "type": "boolean"
-          }
-        }
-      },
       "AvailableSeat": {
         "type": "object",
         "required": [
@@ -412,32 +397,6 @@
         "properties": {
           "id": {
             "$ref": "#/components/schemas/Id"
-          }
-        }
-      },
-      "Screening": {
-        "type": "object",
-        "required": [
-          "id",
-          "movieId",
-          "theaterId",
-          "seats"
-        ],
-        "properties": {
-          "id": {
-            "$ref": "#/components/schemas/Id"
-          },
-          "movieId": {
-            "$ref": "#/components/schemas/Id"
-          },
-          "theaterId": {
-            "$ref": "#/components/schemas/Id"
-          },
-          "seats": {
-            "type": "array",
-            "items": {
-              "$ref": "#/components/schemas/Seat"
-            }
           }
         }
       },
@@ -496,6 +455,25 @@
             "items": {
               "type": "string"
             }
+          }
+        }
+      },
+      "ScreeningSummary": {
+        "type": "object",
+        "required": [
+          "id",
+          "movieId",
+          "theaterId"
+        ],
+        "properties": {
+          "id": {
+            "$ref": "#/components/schemas/Id"
+          },
+          "movieId": {
+            "$ref": "#/components/schemas/Id"
+          },
+          "theaterId": {
+            "$ref": "#/components/schemas/Id"
           }
         }
       }

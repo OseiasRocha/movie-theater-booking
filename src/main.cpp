@@ -94,7 +94,7 @@ CommandLineArguments parseArguments(int argc, char* argv[]) {
  * @par Read endpoints
  * GET /movies returns movie IDs and names (the name field is called movie).
  * GET /theaters returns theater IDs and names. GET /theater?movieId=... filters
- * theaters by movie. GET /screenings lists full records; supplying both movieId
+ * theaters by movie. GET /screenings lists lightweight summaries; supplying both movieId
  * and theaterId returns matching screening IDs. GET /available_seats?screeningId=...
  * returns the unbooked seats for that screening. Invalid ID parameters return HTTP 400.
  *
@@ -201,7 +201,7 @@ void setupEndpoints(std::shared_ptr<spdlog::logger> logger) {
       [logger](const drogon::HttpRequestPtr& req, std::function<void(const drogon::HttpResponsePtr&)>&& callback) {
          const auto& parameters = req->getParameters();
          const bool filtered = parameters.contains("movieId") || parameters.contains("theaterId");
-         std::vector<datamodel::Screening> screenings;
+         std::vector<queries::ScreeningSummary> screenings;
          if (filtered) {
             const auto& movie = req->getParameter("movieId");
             const auto& theater = req->getParameter("theaterId");
@@ -226,21 +226,13 @@ void setupEndpoints(std::shared_ptr<spdlog::logger> logger) {
          Json::Value json(Json::arrayValue);
          for (const auto& screening : screenings) {
             Json::Value item{Json::objectValue};
-            item["id"] = screening.id();
+            item["id"] = screening.id;
             if (filtered) {
                json.append(std::move(item));
                continue;
             }
-            item["movieId"] = screening.movieId();
-            item["theaterId"] = screening.theaterId();
-            Json::Value seats = Json::Value{Json::arrayValue};
-            for (const auto& seat : screening.allSeats()) {
-               Json::Value s{Json::objectValue};
-               s["name"] = std::move(std::string{seat.seat()});
-               s["isBooked"] = seat.isBooked();
-               seats.append(s);
-            }
-            item["seats"] = seats;
+            item["movieId"] = screening.movieId;
+            item["theaterId"] = screening.theaterId;
             json.append(std::move(item));
          }
          drogon::HttpResponsePtr resp = drogon::HttpResponse::newHttpJsonResponse(json);

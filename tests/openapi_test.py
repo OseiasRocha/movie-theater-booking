@@ -135,7 +135,9 @@ class OpenApiTest(unittest.TestCase):
         status, _, body = self.request("GET", "/screenings")
         self.assertEqual(status, 200)
         self.assertEqual({s["id"] for s in body}, {100, 101})
-        self.assertTrue(all({"movieId", "theaterId", "seats"} <= s.keys() for s in body))
+        self.assertEqual(sorted(body, key=lambda s: s["id"]),
+                         [{"id": 100, "movieId": 1, "theaterId": 10},
+                          {"id": 101, "movieId": 1, "theaterId": 10}])
         status, _, body = self.request("GET", "/screenings?movieId=1&theaterId=10")
         self.assertEqual(status, 200)
         self.assertEqual(sorted(body, key=lambda s: s["id"]), [{"id": 100}, {"id": 101}])
@@ -161,6 +163,8 @@ class OpenApiTest(unittest.TestCase):
         self.assertIn("error", body)
         self.assertEqual(self.request("GET", "/available_seats?screeningId=101")[2],
                          [{"seat": "A2", "isBooked": False}])
+        summaries = self.request("GET", "/screenings")[2]
+        self.assertTrue(all(set(row) == {"id", "movieId", "theaterId"} for row in summaries))
 
 
 if __name__ == "__main__":

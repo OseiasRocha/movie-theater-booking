@@ -6,7 +6,6 @@
 #pragma once
 
 #include "DataModel/Movie.h"
-#include "DataModel/Screening.h"
 #include "DataModel/Seat.h"
 #include "DataModel/Theater.h"
 #include <cstdint>
@@ -38,14 +37,24 @@ struct GetAllMovies {
    std::vector<datamodel::Movie> execute(const db::Storage& storage) const;
 };
 
-/** @brief Copy every screening, including its current booking state. */
+/** @brief Lightweight screening identity and references, with no seat or booking state. */
+struct ScreeningSummary {
+   /// @brief Screening identifier.
+   uint32_t id;
+   /// @brief Movie being shown.
+   uint32_t movieId;
+   /// @brief Theater hosting the showing.
+   uint32_t theaterId;
+};
+
+/** @brief List every screening without copying its seat storage. */
 struct GetAllScreenings {
    /**
-    * @brief Copy every screening, including its current booking state.
+    * @brief Project every screening into a lightweight value snapshot.
     * @param storage Read-only storage; the caller holds a shared or exclusive lock.
-    * @return Independent screening snapshots.
+    * @return Screening summaries in unspecified map order; empty for an empty database.
     */
-   std::vector<datamodel::Screening> execute(const db::Storage& storage) const;
+   std::vector<ScreeningSummary> execute(const db::Storage& storage) const;
 };
 
 /** @brief Copy every theater record. */
@@ -89,9 +98,9 @@ struct GetScreeningsWithMovieAndTheater {
    /**
     * @brief Find all screenings for one movie/theater pair.
     * @param storage Read-only storage; the caller holds a shared or exclusive lock.
-    * @return Matching snapshots, including repeated showings; empty if none match.
+    * @return Matching summaries, including repeated showings; empty if none match.
     */
-   std::vector<datamodel::Screening> execute(const db::Storage& storage) const;
+   std::vector<ScreeningSummary> execute(const db::Storage& storage) const;
 
  private:
    /// @brief Movie identifier used for filtering.

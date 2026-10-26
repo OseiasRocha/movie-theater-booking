@@ -25,7 +25,9 @@ datamodel::Screening. db::DB::query() chooses shared or exclusive locking from t
 operation's exact `execute` signature. The mutex covers execution and construction
 of the returned result. The query objects themselves do not acquire locks.
 
-Read operations return owning snapshots. A returned pointer or view into storage
+Read operations return owning snapshots. Screening-list queries return
+queries::ScreeningSummary values containing only identifiers, avoiding copies of
+seat arrays. Seat availability is fetched through its dedicated query and endpoint. A returned pointer or view into storage
 would escape the lock, which the concepts do not prevent. Queries must not call
 back into the same database while executing. An exclusive lock serializes writes
 but does not automatically roll back exceptions after a mutation.

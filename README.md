@@ -55,3 +55,9 @@ docker run --rm -p 8080:8080 movie-theater-booking:local
 ```
 
 The image includes `config/db.json`, runs as a non-root user, and accepts the same CLI options and environment variables.
+
+## Load test
+
+Install `tests/requirements-load.txt` and run `python tests/load_test.py` to test
+1,000 requests/second for 30 seconds (90% GET, 10% POST) in an isolated container.
+See [test instructions and metric definitions](tests/README-load.md); results go to `build/load-test/`.
