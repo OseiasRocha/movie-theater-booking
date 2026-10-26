@@ -13,6 +13,7 @@
 #include <vector>
 
 using namespace db;
+using namespace queries;
 
 static std::shared_ptr<spdlog::logger> logger = spdlog::stdout_color_mt("Queries");
 

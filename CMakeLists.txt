@@ -40,7 +40,7 @@ set_target_properties(movie-theater-booking PROPERTIES
     CXX_STANDARD_REQUIRED YES
     CXX_EXTENSIONS OFF
 )
-target_link_libraries(movie-theater-booking PRIVATE spdlog::spdlog)
+target_link_libraries(movie-theater-booking PRIVATE spdlog::spdlog_header_only)
 target_link_libraries(movie-theater-booking PRIVATE Drogon::Drogon)
 target_link_libraries(movie-theater-booking PRIVATE Threads::Threads)
 
@@ -73,7 +73,7 @@ if(BUILD_TESTING)
     )
     target_include_directories(unit-tests PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/inc")
     target_compile_features(unit-tests PRIVATE cxx_std_20)
-    target_link_libraries(unit-tests PRIVATE GTest::gtest_main Threads::Threads spdlog::spdlog Drogon::Drogon)
+    target_link_libraries(unit-tests PRIVATE GTest::gtest_main Threads::Threads spdlog::spdlog_header_only Drogon::Drogon)
     set_target_properties(unit-tests PROPERTIES CXX_EXTENSIONS OFF)
     include(GoogleTest)
     gtest_discover_tests(unit-tests NO_PRETTY_VALUES PROPERTIES TIMEOUT 15)

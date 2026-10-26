@@ -33,7 +33,7 @@ ctest --test-dir build --output-on-failure
 ## Server address and port
 
 ```sh
-./build/movie-theater-booking --address 127.0.0.1 --port 9000
+./build/movie-theater-booking --address 127.0.0.1 --port 9000 --log-level debug
 ```
 
 Each option overrides its matching environment variable (`ADDRESS` or `PORT`).
@@ -42,9 +42,13 @@ options use the environment, then default to `0.0.0.0` and `8080` when unset.
 Ports must be integers from 1 to 65535. Empty addresses, unknown options,
 duplicate options, and missing option values are rejected.
 
+`--log-level` overrides `LOG_LEVEL` without reading it; when neither is set,
+the default is `info`. Supported levels are `trace`, `debug`, `info`, `warning`
+(`warn`), `error` (`err`), `critical`, and `off`.
+
 Command-line options initialize `Configs` before the DB; subsequent singleton
-access reuses those settings. `CONFIG_DB_FILE_PATH` and `LOG_LEVEL` continue to
-use their environment variables independently.
+access reuses those settings. `CONFIG_DB_FILE_PATH` continues to use its
+environment variable independently.
 
 ## Windows build and run
 

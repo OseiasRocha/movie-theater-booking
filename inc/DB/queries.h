@@ -10,6 +10,8 @@
 #include <string_view>
 #include <vector>
 
+namespace queries {
+
 struct GetAllMovies {
    std::vector<datamodel::Movie> execute(const db::Storage& storage) const;
 };
@@ -51,3 +53,4 @@ struct MakeBooking {
    std::vector<std::string> m_seatsToBook;
    uint32_t m_screeningId;
 };
+} // namespace queries

@@ -15,8 +15,9 @@
 
 using namespace config;
 
-Configs::Configs(std::optional<std::string_view> address, std::optional<std::string_view> port) {
-   loadEnvVariables(address, port);
+Configs::Configs(std::optional<std::string_view> address, std::optional<std::string_view> port,
+                 std::optional<std::string_view> logLevel) {
+   loadEnvVariables(address, port, logLevel);
    loadDBFile();
    const auto movies = validateMovies();
    const auto theaters = validateTheaters();
@@ -55,7 +56,8 @@ void Configs::loadDBFile() {
    m_logger->info("Successfully read {}", filePath);
 }
 
-void Configs::loadEnvVariables(std::optional<std::string_view> address, std::optional<std::string_view> port) {
+void Configs::loadEnvVariables(std::optional<std::string_view> address, std::optional<std::string_view> port,
+                               std::optional<std::string_view> logLevel) {
    if (!address) {
       if (const char* value = std::getenv(ENV_ADDRESS)) {
          address = value;
@@ -88,13 +90,19 @@ void Configs::loadEnvVariables(std::optional<std::string_view> address, std::opt
       }
       m_port = static_cast<uint16_t>(value);
    }
-   const char* logLevelEnv = std::getenv(ENV_LOG_LEVEL);
-
-   if (logLevelEnv == nullptr) {
-      m_logger->warn("Environment variable {} not set. Using default {}", ENV_LOG_LEVEL, DEFAULT_LOG_LEVEL);
+   if (!logLevel) {
+      if (const char* value = std::getenv(ENV_LOG_LEVEL)) {
+         logLevel = value;
+      } else {
+         logLevel = DEFAULT_LOG_LEVEL;
+      }
    }
-
-   m_logLevel = logLevelEnv != nullptr ? logLevelEnv : DEFAULT_LOG_LEVEL;
+   m_logLevel = *logLevel;
+   const auto level = spdlog::level::from_str(m_logLevel);
+   if (level == spdlog::level::off && m_logLevel != "off") {
+      throw std::invalid_argument("Invalid log level: " + m_logLevel);
+   }
+   m_logger->set_level(level);
 }
 
 std::set<uint32_t> Configs::validateMovies() {

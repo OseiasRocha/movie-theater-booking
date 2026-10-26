@@ -27,8 +27,9 @@ class Configs {
  public:
    // Overrides apply only on first initialization, before DB initialization.
    inline static const Configs& getInstance(std::optional<std::string_view> address = std::nullopt,
-                                            std::optional<std::string_view> port = std::nullopt) {
-      static Configs configs{address, port};
+                                            std::optional<std::string_view> port = std::nullopt,
+                                            std::optional<std::string_view> logLevel = std::nullopt) {
+      static Configs configs{address, port, logLevel};
       return configs;
    }
 
@@ -66,9 +67,11 @@ class Configs {
    uint16_t m_port;
    std::string m_address;
 
-   Configs(std::optional<std::string_view> address, std::optional<std::string_view> port);
+   Configs(std::optional<std::string_view> address, std::optional<std::string_view> port,
+           std::optional<std::string_view> logLevel);
    void loadDBFile();
-   void loadEnvVariables(std::optional<std::string_view> address, std::optional<std::string_view> port);
+   void loadEnvVariables(std::optional<std::string_view> address, std::optional<std::string_view> port,
+                         std::optional<std::string_view> logLevel);
    std::set<uint32_t> validateMovies();
    std::set<uint32_t> validateTheaters();
    void validateScreenings(const std::set<uint32_t>& movies, const std::set<uint32_t>& theaters);

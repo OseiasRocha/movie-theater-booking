@@ -15,12 +15,23 @@
 #include <set>
 #include <string>
 #include <thread>
+#include <trantor/utils/Logger.h>
 #include <type_traits>
 #include <vector>
 
 namespace {
 
 using config::Configs;
+using queries::GetAllMovies;
+using queries::GetAvailableSeats;
+using queries::GetMovieByName;
+using queries::GetTheatersWithMovie;
+using queries::MakeBooking;
+
+TEST(LoggingTest, TrantorHasSpdlogSupport) {
+   EXPECT_TRUE(trantor::Logger::hasSpdLogSupport())
+      << "Reinstall Conan dependencies with trantor/*:with_spdlog=True and rebuild.";
+}
 
 static_assert(db::WriteQuery<MakeBooking>);
 static_assert(!db::ReadQuery<MakeBooking>);
@@ -246,11 +257,49 @@ TEST_F(ConfigFileTest, ServerOverridesIgnoreInvalidEnvironmentValues) {
          setConfigPath(path);
          setEnvironment("ADDRESS", "");
          setEnvironment("PORT", "invalid");
-         const auto& config = Configs::getInstance("127.0.0.1", "9000");
+         setEnvironment("LOG_LEVEL", "invalid");
+         const auto& config = Configs::getInstance("127.0.0.1", "9000", "debug");
+         EXPECT_EQ(config.logLevel(), "debug");
          EXPECT_EQ(config.address(), "127.0.0.1");
          EXPECT_EQ(config.port(), 9000);
          EXPECT_EQ(&config, &Configs::getInstance());
          EXPECT_EQ(Configs::getInstance().port(), 9000);
+         std::exit(testing::Test::HasFailure() ? 1 : 0);
+      },
+      testing::ExitedWithCode(0), "");
+}
+
+TEST_F(ConfigFileTest, LogLevelUsesEnvironmentAndValidatesOverrides) {
+   EXPECT_EXIT(
+      {
+         setConfigPath(path);
+         setEnvironment("LOG_LEVEL", "trace");
+         EXPECT_EQ(Configs::getInstance("127.0.0.1", "8080").logLevel(), "trace");
+         std::exit(testing::Test::HasFailure() ? 1 : 0);
+      },
+      testing::ExitedWithCode(0), "");
+   for (const char* level : {"", "invalid", "DEBUG"}) {
+      EXPECT_EXIT(
+         {
+            setConfigPath(path);
+            try {
+               (void)Configs::getInstance("127.0.0.1", "8080", level);
+            } catch (const std::invalid_argument& error) {
+               std::cerr << error.what();
+               std::exit(1);
+            }
+            std::exit(0);
+         },
+         testing::ExitedWithCode(1), "Invalid log level");
+   }
+}
+
+TEST_F(ConfigFileTest, LogLevelDefaultsToInfo) {
+   EXPECT_EXIT(
+      {
+         setConfigPath(path);
+         setEnvironment("LOG_LEVEL", nullptr);
+         EXPECT_EQ(Configs::getInstance("127.0.0.1", "8080").logLevel(), "info");
          std::exit(testing::Test::HasFailure() ? 1 : 0);
       },
       testing::ExitedWithCode(0), "");
