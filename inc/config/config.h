@@ -9,11 +9,13 @@
 #include <memory>
 #include <optional>
 #include <set>
-#include <spdlog/logger.h>
-#include <spdlog/sinks/stdout_color_sinks.h>
 #include <string>
 #include <string_view>
 #include <utility>
+
+namespace spdlog {
+class logger;
+}
 
 /** @brief Startup settings and validation of JSON-backed database records. */
 namespace config {
@@ -88,7 +90,7 @@ class Configs {
    static constexpr char DEFAULT_ADDRESS[] = "0.0.0.0";
    static constexpr uint16_t DEFAULT_PORT = 8080;
    static constexpr char DEFAULT_LOG_LEVEL[] = "info";
-   std::shared_ptr<spdlog::logger> m_logger = spdlog::stdout_color_mt("Config");
+   std::shared_ptr<spdlog::logger> m_logger;
 
    Json::Value m_dbConfigFileRoot;
    std::string m_logLevel;

@@ -13,6 +13,8 @@
 #include <json/value.h>
 #include <set>
 #include <spdlog/common.h>
+#include <spdlog/logger.h>
+#include <spdlog/sinks/stdout_color_sinks.h>
 #include <stdexcept>
 #include <string>
 #include <system_error>
@@ -20,7 +22,8 @@
 using namespace config;
 
 Configs::Configs(std::optional<std::string_view> address, std::optional<std::string_view> port,
-                 std::optional<std::string_view> logLevel) {
+                 std::optional<std::string_view> logLevel)
+   : m_logger(spdlog::stdout_color_mt("Config")) {
    loadEnvVariables(address, port, logLevel);
    loadDBFile();
    const auto movies = validateMovies();

@@ -1,12 +1,11 @@
 /**
  * @file
- * @brief Owning theater records and their fmt formatting support.
+ * @brief Owning theater records.
  */
 
 #pragma once
 
 #include <cstdint>
-#include <spdlog/fmt/fmt.h>
 #include <string>
 #include <string_view>
 #include <utility>
@@ -38,19 +37,3 @@ class Theater {
    std::string m_name;
 };
 } // namespace datamodel
-
-/** @brief Format a theater using its display name and string format options. */
-template <> struct fmt::formatter<datamodel::Theater> : fmt::formatter<fmt::string_view> {
-
-   /**
-    * @brief Write the theater name using the inherited string formatter.
-    * @param theater Record to format.
-    * @param ctx Destination formatting context.
-    * @return Iterator past the formatted output.
-    */
-   template <typename FormatContext> auto format(const datamodel::Theater& theater, FormatContext& ctx) const {
-      const auto name = theater.name();
-
-      return fmt::formatter<fmt::string_view>::format(fmt::string_view{name.data(), name.size()}, ctx);
-   }
-};

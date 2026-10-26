@@ -21,6 +21,7 @@ endif()
 
 find_package(spdlog CONFIG REQUIRED)
 find_package(Drogon CONFIG REQUIRED)
+find_package(jsoncpp CONFIG REQUIRED)
 set(THREADS_PREFER_PTHREAD_FLAG ON)
 find_package(Threads REQUIRED)
 
@@ -32,7 +33,22 @@ file(READ "${CMAKE_CURRENT_SOURCE_DIR}/docs/openapi.json" OPENAPI_JSON)
 file(READ "${CMAKE_CURRENT_SOURCE_DIR}/docs/swagger.html" SWAGGER_HTML)
 configure_file(docs/assets.h.in generated/api_docs_assets.h @ONLY)
 
-add_executable(movie-theater-booking src/main.cpp src/api/docs.cpp src/DB/queries.cpp src/DB/DB.cpp src/DataModel/Screening.cpp src/config/config.cpp)
+# Compile the implementation once, then reuse it in the server and tests.
+add_library(booking-core STATIC
+    src/DB/queries.cpp
+    src/DB/DB.cpp
+    src/DataModel/Screening.cpp
+    src/config/config.cpp
+)
+target_include_directories(booking-core PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/inc")
+target_compile_features(booking-core PUBLIC cxx_std_20)
+target_link_libraries(booking-core PUBLIC
+    spdlog::spdlog
+    JsonCpp::JsonCpp
+    Threads::Threads
+)
+
+add_executable(movie-theater-booking src/main.cpp src/api/docs.cpp)
 add_custom_target(copy-config
     COMMAND ${CMAKE_COMMAND} -E copy_directory
         "${CMAKE_CURRENT_SOURCE_DIR}/config"
@@ -41,27 +57,25 @@ add_custom_target(copy-config
     VERBATIM
 )
 add_dependencies(movie-theater-booking copy-config)
-target_include_directories(movie-theater-booking PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/inc")
 target_include_directories(movie-theater-booking PRIVATE "${CMAKE_CURRENT_BINARY_DIR}/generated")
-target_compile_features(movie-theater-booking PRIVATE cxx_std_20)
-set_target_properties(movie-theater-booking PROPERTIES
+set_target_properties(booking-core movie-theater-booking PROPERTIES
     CXX_STANDARD 20
     CXX_STANDARD_REQUIRED YES
     CXX_EXTENSIONS OFF
 )
-target_link_libraries(movie-theater-booking PRIVATE spdlog::spdlog_header_only)
-target_link_libraries(movie-theater-booking PRIVATE Drogon::Drogon)
-target_link_libraries(movie-theater-booking PRIVATE Threads::Threads)
+target_link_libraries(movie-theater-booking PRIVATE booking-core Drogon::Drogon)
 
 if(CMAKE_SYSTEM_NAME STREQUAL "Linux")
-    target_link_libraries(movie-theater-booking PUBLIC atomic)
+    target_link_libraries(booking-core PUBLIC atomic)
 endif()
 
-if(MSVC)
-    target_compile_options(movie-theater-booking PRIVATE /W4 /permissive-)
-else()
-    target_compile_options(movie-theater-booking PRIVATE -Wall -Wextra -Wpedantic)
-endif()
+foreach(_target IN ITEMS booking-core movie-theater-booking)
+    if(MSVC)
+        target_compile_options(${_target} PRIVATE /W4 /permissive-)
+    else()
+        target_compile_options(${_target} PRIVATE -Wall -Wextra -Wpedantic)
+    endif()
+endforeach()
 
 include(GNUInstallDirs)
 install(TARGETS movie-theater-booking RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR})
@@ -73,16 +87,8 @@ endif()
 include(CTest)
 if(BUILD_TESTING)
     find_package(GTest CONFIG REQUIRED)
-    add_executable(unit-tests
-        tests/booking_test.cpp
-        src/config/config.cpp
-        src/DB/DB.cpp
-        src/DB/queries.cpp
-        src/DataModel/Screening.cpp
-    )
-    target_include_directories(unit-tests PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/inc")
-    target_compile_features(unit-tests PRIVATE cxx_std_20)
-    target_link_libraries(unit-tests PRIVATE GTest::gtest_main Threads::Threads spdlog::spdlog_header_only Drogon::Drogon)
+    add_executable(unit-tests tests/booking_test.cpp)
+    target_link_libraries(unit-tests PRIVATE booking-core GTest::gtest_main Drogon::Drogon)
     set_target_properties(unit-tests PROPERTIES CXX_EXTENSIONS OFF)
     include(GoogleTest)
     gtest_discover_tests(unit-tests NO_PRETTY_VALUES PROPERTIES TIMEOUT 15)

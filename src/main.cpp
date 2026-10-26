@@ -84,6 +84,28 @@ CommandLineArguments parseArguments(int argc, char* argv[]) {
    }
    return arguments;
 }
+
+/** @brief Map the configured application level to Trantor's native threshold. */
+trantor::Logger::LogLevel toTrantorLogLevel(spdlog::level::level_enum level) {
+   switch (level) {
+   case spdlog::level::trace:
+      return trantor::Logger::kTrace;
+   case spdlog::level::debug:
+      return trantor::Logger::kDebug;
+   case spdlog::level::info:
+      return trantor::Logger::kInfo;
+   case spdlog::level::warn:
+      return trantor::Logger::kWarn;
+   case spdlog::level::err:
+      return trantor::Logger::kError;
+   case spdlog::level::critical:
+      return trantor::Logger::kFatal;
+   case spdlog::level::off:
+      return trantor::Logger::kNumberOfLogLevels;
+   default:
+      throw std::invalid_argument("Unsupported log level");
+   }
+}
 } // namespace
 
 /**
@@ -312,19 +334,20 @@ int main(int argc, char* argv[]) {
    try {
       const auto arguments = parseArguments(argc, argv);
 
-      std::shared_ptr<spdlog::logger> logger_drogon = spdlog::stdout_color_mt("Drogon");
-      trantor::Logger::enableSpdLog(logger_drogon);
-
       const auto& configs = config::Configs::getInstance(arguments.address, arguments.port, arguments.logLevel);
 
-      spdlog::set_level(spdlog::level::from_str(std::string{configs.logLevel()}));
+      const auto level = spdlog::level::from_str(std::string{configs.logLevel()});
+      spdlog::set_level(level);
+      if (level == spdlog::level::off) {
+         // Trantor's warning/error macros bypass its threshold, so silence output explicitly.
+         trantor::Logger::setOutputFunction({}, {});
+      }
 
       db::DB::getInstance();
 
       const auto threads = std::clamp(std::thread::hardware_concurrency(), 2u, 8u);
       drogon::app()
-         // Let the configured spdlog level filter Drogon messages too.
-         .setLogLevel(trantor::Logger::kTrace)
+         .setLogLevel(toTrantorLogLevel(level))
          .addListener(std::string{configs.address()}, configs.port())
          .setThreadNum(threads)
          .enableGzip(true)

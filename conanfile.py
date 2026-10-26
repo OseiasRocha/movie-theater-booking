@@ -13,8 +13,8 @@ class CppTemplate(ConanFile):
     exports_sources = "CMakeLists.txt", "src/*", "inc/*", "config/*", "docs/*", "tests/*"
     default_options = {
         "drogon/*:with_boost": False,
-        "trantor/*:with_spdlog": True,
-        "spdlog/*:header_only": True,
+        "trantor/*:with_spdlog": False,
+        "spdlog/*:header_only": False,
     }
     def requirements(self):
         self.requires("spdlog/1.17.0")

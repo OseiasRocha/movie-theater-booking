@@ -1,12 +1,11 @@
 /**
  * @file
- * @brief Owning movie records and their fmt formatting support.
+ * @brief Owning movie records.
  */
 
 #pragma once
 
 #include <cstdint>
-#include <spdlog/fmt/fmt.h>
 #include <string>
 #include <string_view>
 #include <utility>
@@ -38,23 +37,3 @@ class Movie {
    std::string m_name;
 };
 } // namespace datamodel
-
-/** @namespace fmt
- * @brief External formatting namespace extended with model formatters.
- */
-
-/** @brief Format a movie using its display name and string format options. */
-template <> struct fmt::formatter<datamodel::Movie> : fmt::formatter<fmt::string_view> {
-
-   /**
-    * @brief Write the movie name using the inherited string formatter.
-    * @param movie Record to format.
-    * @param ctx Destination formatting context.
-    * @return Iterator past the formatted output.
-    */
-   template <typename FormatContext> auto format(const datamodel::Movie& movie, FormatContext& ctx) const {
-      const auto name = movie.name();
-
-      return fmt::formatter<fmt::string_view>::format(fmt::string_view{name.data(), name.size()}, ctx);
-   }
-};

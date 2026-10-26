@@ -52,10 +52,10 @@ using queries::GetMovieByName;
 using queries::GetTheatersWithMovie;
 using queries::MakeBooking;
 
-/** @test LoggingTest: trantor has spdlog support. */
-TEST(LoggingTest, TrantorHasSpdlogSupport) {
-   EXPECT_TRUE(trantor::Logger::hasSpdLogSupport())
-      << "Reinstall Conan dependencies with trantor/*:with_spdlog=True and rebuild.";
+/** @test LoggingTest: Trantor uses its native logger independently of spdlog. */
+TEST(LoggingTest, TrantorUsesNativeLogging) {
+   EXPECT_FALSE(trantor::Logger::hasSpdLogSupport())
+      << "Reinstall Conan dependencies with trantor/*:with_spdlog=False and rebuild.";
 }
 
 static_assert(db::WriteQuery<MakeBooking>);
@@ -220,7 +220,7 @@ Json::Value validConfig() {
 /**
  * @brief Set or unset a process environment variable for isolated startup tests.
  * @param name Variable name.
- * @param value Replacement value, or nullptr to unset it (empty on Windows).
+ * @param value Replacement value, or nullptr to unset it. Empty also unsets it on Windows.
  * @throws std::runtime_error If the platform environment update fails.
  * @note Use in child processes to avoid affecting other tests or threads.
  */
@@ -435,6 +435,12 @@ TEST_F(ConfigFileTest, RejectsInvalidPortsFromOverridesAndEnvironment) {
    for (const char* port : {"", "0", "65536", "-1", "80abc", "1.5", " 80", "99999999999999999999"}) {
       SCOPED_TRACE(port);
       for (bool overridePort : {false, true}) {
+#ifdef _WIN32
+         // _putenv_s(name, "") removes the variable; only the CLI can supply an empty value.
+         if (!overridePort && port[0] == '\0') {
+            continue;
+         }
+#endif
          EXPECT_EXIT(
             {
                setConfigPath(path);

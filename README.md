@@ -42,6 +42,8 @@ Command-line options override their matching environment variables; omitted sett
 | — | `CONFIG_DB_FILE_PATH` | `config/db.json` |
 
 Ports must be 1–65535. Log levels: `trace`, `debug`, `info`, `warn`, `error`, `critical`, `off`.
+Application logs use spdlog; Drogon/Trantor use their native format. The level sets both thresholds,
+but Trantor always emits warnings and errors unless the level is `off`.
 Edit `config/db.json` to configure movies, theaters, screenings, and seats. Paths are relative to the working directory; the build also copies `config/` into `build/`. Restart the server after changing configuration.
 
 Swagger UI: `http://localhost:8080/docs` (use your configured port; UI assets require internet).
@@ -55,6 +57,7 @@ docker run --rm -p 8080:8080 movie-theater-booking:local
 ```
 
 The image includes `config/db.json`, runs as a non-root user, and accepts the same CLI options and environment variables.
+BuildKit caches Alpine dependencies locally; CI also reuses cached build layers. Application builds use unity compilation and Ninja's default parallelism.
 
 ## Load test
 

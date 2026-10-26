@@ -57,10 +57,13 @@ value, validate external input, execute DB queries, and deliver JSON through the
 Drogon response callback. The generated specification is maintained in
 `docs/openapi.json` and embedded into the executable by CMake.
 
-Main, Config, Queries, Screening, and Drogon use registered spdlog loggers. Startup
-applies one global pattern and the configured logging level. Trantor's trace
-threshold allows forwarded Drogon records to be filtered by spdlog. Formatting a
-trace message's arguments still incurs work before the logging call checks its level.
+Main, Config, Queries, and Screening use registered loggers from compiled spdlog.
+Startup applies one global pattern and the configured logging level. Drogon and
+Trantor log independently with Trantor's native format and corresponding threshold.
+Trantor always emits warning/error/fatal records regardless of that threshold;
+`off` explicitly disables its output. Model formatters are provided separately in
+`DataModel/formatters.h`. Formatting a trace message's arguments still incurs work
+before the logging call checks its level.
 
 ## Regression tests
 

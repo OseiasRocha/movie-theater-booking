@@ -5,6 +5,7 @@
 
 #include "DataModel/Screening.h"
 #include "DataModel/Seat.h"
+#include "DataModel/formatters.h"
 #include <algorithm>
 #include <array>
 #include <span>
