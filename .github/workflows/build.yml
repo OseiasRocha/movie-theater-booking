@@ -69,10 +69,23 @@ jobs:
           registry: dhi.io
           username: ${{ env.DHI_USERNAME }}
           password: ${{ env.DHI_TOKEN }}
+      - uses: docker/setup-buildx-action@v3
       - name: Build image and run unit tests
-        run: docker build --pull --tag movie-theater-booking:ci .
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          load: true
+          pull: true
+          tags: movie-theater-booking:ci
+          cache-from: type=gha,scope=movie-theater-booking-alpine
+          cache-to: type=gha,mode=max,scope=movie-theater-booking-alpine
       - name: Run application in runtime image
-        run: docker run --rm movie-theater-booking:ci
+        run: |
+          container_id=$(docker run --detach --publish 127.0.0.1::8080 movie-theater-booking:ci)
+          trap 'docker logs "$container_id"; docker rm --force "$container_id"' EXIT
+          host_port=$(docker inspect --format '{{(index (index .NetworkSettings.Ports "8080/tcp") 0).HostPort}}' "$container_id")
+          curl --fail --retry 30 --retry-connrefused --retry-delay 1 "http://127.0.0.1:${host_port}/movies"
+          curl --fail "http://127.0.0.1:${host_port}/openapi.json"
       - name: Save tested image for publication
         if: github.event_name == 'release'
         run: docker save movie-theater-booking:ci | gzip > docker-image.tar.gz

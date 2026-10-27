@@ -1,0 +1,1122 @@
+{
+  "movies": [
+    {
+      "id": 1,
+      "name": "Interstellar"
+    },
+    {
+      "id": 2,
+      "name": "Arrival"
+    },
+    {
+      "id": 3,
+      "name": "Inception"
+    },
+    {
+      "id": 4,
+      "name": "The Matrix"
+    },
+    {
+      "id": 5,
+      "name": "Dune"
+    }
+  ],
+  "theaters": [
+    {
+      "id": 10,
+      "name": "Cinema One"
+    },
+    {
+      "id": 20,
+      "name": "Downtown Cinema"
+    },
+    {
+      "id": 30,
+      "name": "Riverside Cinema"
+    },
+    {
+      "id": 40,
+      "name": "Grand IMAX"
+    },
+    {
+      "id": 50,
+      "name": "Parkside Cinema"
+    }
+  ],
+  "screenings": [
+    {
+      "id": 100,
+      "movieId": 1,
+      "theaterId": 10,
+      "seats": [
+        {
+          "name": "A1"
+        },
+        {
+          "name": "A2"
+        }
+      ]
+    },
+    {
+      "id": 101,
+      "movieId": 1,
+      "theaterId": 20,
+      "seats": [
+        {
+          "name": "A1"
+        }
+      ]
+    },
+    {
+      "id": 102,
+      "movieId": 1,
+      "theaterId": 30,
+      "seats": [
+        {
+          "name": "A1"
+        },
+        {
+          "name": "A2"
+        },
+        {
+          "name": "A3"
+        },
+        {
+          "name": "A4"
+        },
+        {
+          "name": "A5"
+        }
+      ]
+    },
+    {
+      "id": 103,
+      "movieId": 1,
+      "theaterId": 40,
+      "seats": [
+        {
+          "name": "A1"
+        },
+        {
+          "name": "A2"
+        },
+        {
+          "name": "A3"
+        },
+        {
+          "name": "A4"
+        },
+        {
+          "name": "A5"
+        },
+        {
+          "name": "B1"
+        },
+        {
+          "name": "B2"
+        },
+        {
+          "name": "B3"
+        },
+        {
+          "name": "B4"
+        },
+        {
+          "name": "B5"
+        }
+      ]
+    },
+    {
+      "id": 104,
+      "movieId": 1,
+      "theaterId": 50,
+      "seats": [
+        {
+          "name": "A1"
+        },
+        {
+          "name": "A2"
+        },
+        {
+          "name": "A3"
+        },
+        {
+          "name": "A4"
+        },
+        {
+          "name": "A5"
+        },
+        {
+          "name": "B1"
+        },
+        {
+          "name": "B2"
+        },
+        {
+          "name": "B3"
+        },
+        {
+          "name": "B4"
+        },
+        {
+          "name": "B5"
+        },
+        {
+          "name": "C1"
+        },
+        {
+          "name": "C2"
+        },
+        {
+          "name": "C3"
+        },
+        {
+          "name": "C4"
+        },
+        {
+          "name": "C5"
+        }
+      ]
+    },
+    {
+      "id": 105,
+      "movieId": 2,
+      "theaterId": 10,
+      "seats": [
+        {
+          "name": "A1"
+        },
+        {
+          "name": "A2"
+        },
+        {
+          "name": "A3"
+        },
+        {
+          "name": "A4"
+        },
+        {
+          "name": "A5"
+        },
+        {
+          "name": "B1"
+        },
+        {
+          "name": "B2"
+        },
+        {
+          "name": "B3"
+        },
+        {
+          "name": "B4"
+        },
+        {
+          "name": "B5"
+        },
+        {
+          "name": "C1"
+        },
+        {
+          "name": "C2"
+        },
+        {
+          "name": "C3"
+        },
+        {
+          "name": "C4"
+        },
+        {
+          "name": "C5"
+        },
+        {
+          "name": "D1"
+        },
+        {
+          "name": "D2"
+        },
+        {
+          "name": "D3"
+        },
+        {
+          "name": "D4"
+        },
+        {
+          "name": "D5"
+        }
+      ]
+    },
+    {
+      "id": 106,
+      "movieId": 2,
+      "theaterId": 20,
+      "seats": [
+        {
+          "name": "A1"
+        }
+      ]
+    },
+    {
+      "id": 107,
+      "movieId": 2,
+      "theaterId": 30,
+      "seats": [
+        {
+          "name": "A1"
+        },
+        {
+          "name": "A2"
+        },
+        {
+          "name": "A3"
+        },
+        {
+          "name": "A4"
+        },
+        {
+          "name": "A5"
+        }
+      ]
+    },
+    {
+      "id": 108,
+      "movieId": 2,
+      "theaterId": 40,
+      "seats": [
+        {
+          "name": "A1"
+        },
+        {
+          "name": "A2"
+        },
+        {
+          "name": "A3"
+        },
+        {
+          "name": "A4"
+        },
+        {
+          "name": "A5"
+        },
+        {
+          "name": "B1"
+        },
+        {
+          "name": "B2"
+        },
+        {
+          "name": "B3"
+        },
+        {
+          "name": "B4"
+        },
+        {
+          "name": "B5"
+        }
+      ]
+    },
+    {
+      "id": 109,
+      "movieId": 2,
+      "theaterId": 50,
+      "seats": [
+        {
+          "name": "A1"
+        },
+        {
+          "name": "A2"
+        },
+        {
+          "name": "A3"
+        },
+        {
+          "name": "A4"
+        },
+        {
+          "name": "A5"
+        },
+        {
+          "name": "B1"
+        },
+        {
+          "name": "B2"
+        },
+        {
+          "name": "B3"
+        },
+        {
+          "name": "B4"
+        },
+        {
+          "name": "B5"
+        },
+        {
+          "name": "C1"
+        },
+        {
+          "name": "C2"
+        },
+        {
+          "name": "C3"
+        },
+        {
+          "name": "C4"
+        },
+        {
+          "name": "C5"
+        }
+      ]
+    },
+    {
+      "id": 110,
+      "movieId": 3,
+      "theaterId": 10,
+      "seats": [
+        {
+          "name": "A1"
+        },
+        {
+          "name": "A2"
+        },
+        {
+          "name": "A3"
+        },
+        {
+          "name": "A4"
+        },
+        {
+          "name": "A5"
+        },
+        {
+          "name": "B1"
+        },
+        {
+          "name": "B2"
+        },
+        {
+          "name": "B3"
+        },
+        {
+          "name": "B4"
+        },
+        {
+          "name": "B5"
+        },
+        {
+          "name": "C1"
+        },
+        {
+          "name": "C2"
+        },
+        {
+          "name": "C3"
+        },
+        {
+          "name": "C4"
+        },
+        {
+          "name": "C5"
+        },
+        {
+          "name": "D1"
+        },
+        {
+          "name": "D2"
+        },
+        {
+          "name": "D3"
+        },
+        {
+          "name": "D4"
+        },
+        {
+          "name": "D5"
+        }
+      ]
+    },
+    {
+      "id": 111,
+      "movieId": 3,
+      "theaterId": 20,
+      "seats": [
+        {
+          "name": "A1"
+        }
+      ]
+    },
+    {
+      "id": 112,
+      "movieId": 3,
+      "theaterId": 30,
+      "seats": [
+        {
+          "name": "A1"
+        },
+        {
+          "name": "A2"
+        },
+        {
+          "name": "A3"
+        },
+        {
+          "name": "A4"
+        },
+        {
+          "name": "A5"
+        }
+      ]
+    },
+    {
+      "id": 113,
+      "movieId": 3,
+      "theaterId": 40,
+      "seats": [
+        {
+          "name": "A1"
+        },
+        {
+          "name": "A2"
+        },
+        {
+          "name": "A3"
+        },
+        {
+          "name": "A4"
+        },
+        {
+          "name": "A5"
+        },
+        {
+          "name": "B1"
+        },
+        {
+          "name": "B2"
+        },
+        {
+          "name": "B3"
+        },
+        {
+          "name": "B4"
+        },
+        {
+          "name": "B5"
+        }
+      ]
+    },
+    {
+      "id": 114,
+      "movieId": 3,
+      "theaterId": 50,
+      "seats": [
+        {
+          "name": "A1"
+        },
+        {
+          "name": "A2"
+        },
+        {
+          "name": "A3"
+        },
+        {
+          "name": "A4"
+        },
+        {
+          "name": "A5"
+        },
+        {
+          "name": "B1"
+        },
+        {
+          "name": "B2"
+        },
+        {
+          "name": "B3"
+        },
+        {
+          "name": "B4"
+        },
+        {
+          "name": "B5"
+        },
+        {
+          "name": "C1"
+        },
+        {
+          "name": "C2"
+        },
+        {
+          "name": "C3"
+        },
+        {
+          "name": "C4"
+        },
+        {
+          "name": "C5"
+        }
+      ]
+    },
+    {
+      "id": 115,
+      "movieId": 4,
+      "theaterId": 10,
+      "seats": [
+        {
+          "name": "A1"
+        },
+        {
+          "name": "A2"
+        },
+        {
+          "name": "A3"
+        },
+        {
+          "name": "A4"
+        },
+        {
+          "name": "A5"
+        },
+        {
+          "name": "B1"
+        },
+        {
+          "name": "B2"
+        },
+        {
+          "name": "B3"
+        },
+        {
+          "name": "B4"
+        },
+        {
+          "name": "B5"
+        },
+        {
+          "name": "C1"
+        },
+        {
+          "name": "C2"
+        },
+        {
+          "name": "C3"
+        },
+        {
+          "name": "C4"
+        },
+        {
+          "name": "C5"
+        },
+        {
+          "name": "D1"
+        },
+        {
+          "name": "D2"
+        },
+        {
+          "name": "D3"
+        },
+        {
+          "name": "D4"
+        },
+        {
+          "name": "D5"
+        }
+      ]
+    },
+    {
+      "id": 116,
+      "movieId": 4,
+      "theaterId": 20,
+      "seats": [
+        {
+          "name": "A1"
+        }
+      ]
+    },
+    {
+      "id": 117,
+      "movieId": 4,
+      "theaterId": 30,
+      "seats": [
+        {
+          "name": "A1"
+        },
+        {
+          "name": "A2"
+        },
+        {
+          "name": "A3"
+        },
+        {
+          "name": "A4"
+        },
+        {
+          "name": "A5"
+        }
+      ]
+    },
+    {
+      "id": 118,
+      "movieId": 4,
+      "theaterId": 40,
+      "seats": [
+        {
+          "name": "A1"
+        },
+        {
+          "name": "A2"
+        },
+        {
+          "name": "A3"
+        },
+        {
+          "name": "A4"
+        },
+        {
+          "name": "A5"
+        },
+        {
+          "name": "B1"
+        },
+        {
+          "name": "B2"
+        },
+        {
+          "name": "B3"
+        },
+        {
+          "name": "B4"
+        },
+        {
+          "name": "B5"
+        }
+      ]
+    },
+    {
+      "id": 119,
+      "movieId": 4,
+      "theaterId": 50,
+      "seats": [
+        {
+          "name": "A1"
+        },
+        {
+          "name": "A2"
+        },
+        {
+          "name": "A3"
+        },
+        {
+          "name": "A4"
+        },
+        {
+          "name": "A5"
+        },
+        {
+          "name": "B1"
+        },
+        {
+          "name": "B2"
+        },
+        {
+          "name": "B3"
+        },
+        {
+          "name": "B4"
+        },
+        {
+          "name": "B5"
+        },
+        {
+          "name": "C1"
+        },
+        {
+          "name": "C2"
+        },
+        {
+          "name": "C3"
+        },
+        {
+          "name": "C4"
+        },
+        {
+          "name": "C5"
+        }
+      ]
+    },
+    {
+      "id": 120,
+      "movieId": 5,
+      "theaterId": 10,
+      "seats": [
+        {
+          "name": "A1"
+        },
+        {
+          "name": "A2"
+        },
+        {
+          "name": "A3"
+        },
+        {
+          "name": "A4"
+        },
+        {
+          "name": "A5"
+        },
+        {
+          "name": "B1"
+        },
+        {
+          "name": "B2"
+        },
+        {
+          "name": "B3"
+        },
+        {
+          "name": "B4"
+        },
+        {
+          "name": "B5"
+        },
+        {
+          "name": "C1"
+        },
+        {
+          "name": "C2"
+        },
+        {
+          "name": "C3"
+        },
+        {
+          "name": "C4"
+        },
+        {
+          "name": "C5"
+        },
+        {
+          "name": "D1"
+        },
+        {
+          "name": "D2"
+        },
+        {
+          "name": "D3"
+        },
+        {
+          "name": "D4"
+        },
+        {
+          "name": "D5"
+        }
+      ]
+    },
+    {
+      "id": 121,
+      "movieId": 5,
+      "theaterId": 20,
+      "seats": [
+        {
+          "name": "A1"
+        }
+      ]
+    },
+    {
+      "id": 122,
+      "movieId": 5,
+      "theaterId": 30,
+      "seats": [
+        {
+          "name": "A1"
+        },
+        {
+          "name": "A2"
+        },
+        {
+          "name": "A3"
+        },
+        {
+          "name": "A4"
+        },
+        {
+          "name": "A5"
+        }
+      ]
+    },
+    {
+      "id": 123,
+      "movieId": 5,
+      "theaterId": 40,
+      "seats": [
+        {
+          "name": "A1"
+        },
+        {
+          "name": "A2"
+        },
+        {
+          "name": "A3"
+        },
+        {
+          "name": "A4"
+        },
+        {
+          "name": "A5"
+        },
+        {
+          "name": "B1"
+        },
+        {
+          "name": "B2"
+        },
+        {
+          "name": "B3"
+        },
+        {
+          "name": "B4"
+        },
+        {
+          "name": "B5"
+        }
+      ]
+    },
+    {
+      "id": 124,
+      "movieId": 5,
+      "theaterId": 50,
+      "seats": [
+        {
+          "name": "A1"
+        },
+        {
+          "name": "A2"
+        },
+        {
+          "name": "A3"
+        },
+        {
+          "name": "A4"
+        },
+        {
+          "name": "A5"
+        },
+        {
+          "name": "B1"
+        },
+        {
+          "name": "B2"
+        },
+        {
+          "name": "B3"
+        },
+        {
+          "name": "B4"
+        },
+        {
+          "name": "B5"
+        },
+        {
+          "name": "C1"
+        },
+        {
+          "name": "C2"
+        },
+        {
+          "name": "C3"
+        },
+        {
+          "name": "C4"
+        },
+        {
+          "name": "C5"
+        }
+      ]
+    },
+    {
+      "id": 125,
+      "movieId": 1,
+      "theaterId": 10,
+      "seats": [
+        {
+          "name": "A1"
+        },
+        {
+          "name": "A2"
+        },
+        {
+          "name": "A3"
+        },
+        {
+          "name": "A4"
+        },
+        {
+          "name": "A5"
+        },
+        {
+          "name": "B1"
+        },
+        {
+          "name": "B2"
+        },
+        {
+          "name": "B3"
+        },
+        {
+          "name": "B4"
+        },
+        {
+          "name": "B5"
+        },
+        {
+          "name": "C1"
+        },
+        {
+          "name": "C2"
+        },
+        {
+          "name": "C3"
+        },
+        {
+          "name": "C4"
+        },
+        {
+          "name": "C5"
+        },
+        {
+          "name": "D1"
+        },
+        {
+          "name": "D2"
+        },
+        {
+          "name": "D3"
+        },
+        {
+          "name": "D4"
+        },
+        {
+          "name": "D5"
+        }
+      ]
+    },
+    {
+      "id": 126,
+      "movieId": 2,
+      "theaterId": 20,
+      "seats": [
+        {
+          "name": "A1"
+        }
+      ]
+    },
+    {
+      "id": 127,
+      "movieId": 3,
+      "theaterId": 30,
+      "seats": [
+        {
+          "name": "A1"
+        },
+        {
+          "name": "A2"
+        },
+        {
+          "name": "A3"
+        },
+        {
+          "name": "A4"
+        },
+        {
+          "name": "A5"
+        }
+      ]
+    },
+    {
+      "id": 128,
+      "movieId": 4,
+      "theaterId": 40,
+      "seats": [
+        {
+          "name": "A1"
+        },
+        {
+          "name": "A2"
+        },
+        {
+          "name": "A3"
+        },
+        {
+          "name": "A4"
+        },
+        {
+          "name": "A5"
+        },
+        {
+          "name": "B1"
+        },
+        {
+          "name": "B2"
+        },
+        {
+          "name": "B3"
+        },
+        {
+          "name": "B4"
+        },
+        {
+          "name": "B5"
+        }
+      ]
+    },
+    {
+      "id": 129,
+      "movieId": 5,
+      "theaterId": 50,
+      "seats": [
+        {
+          "name": "A1"
+        },
+        {
+          "name": "A2"
+        },
+        {
+          "name": "A3"
+        },
+        {
+          "name": "A4"
+        },
+        {
+          "name": "A5"
+        },
+        {
+          "name": "B1"
+        },
+        {
+          "name": "B2"
+        },
+        {
+          "name": "B3"
+        },
+        {
+          "name": "B4"
+        },
+        {
+          "name": "B5"
+        },
+        {
+          "name": "C1"
+        },
+        {
+          "name": "C2"
+        },
+        {
+          "name": "C3"
+        },
+        {
+          "name": "C4"
+        },
+        {
+          "name": "C5"
+        }
+      ]
+    }
+  ]
+}

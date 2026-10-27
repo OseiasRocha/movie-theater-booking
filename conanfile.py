@@ -10,10 +10,15 @@ class CppTemplate(ConanFile):
     package_type = "application"
     required_conan_version = ">=2.2 <3"
     settings = "os", "compiler", "build_type", "arch"
-    exports_sources = "CMakeLists.txt", "src/*", "tests/*"
-
+    exports_sources = "CMakeLists.txt", "src/*", "inc/*", "config/*", "docs/*", "tests/*"
+    default_options = {
+        "drogon/*:with_boost": False,
+        "trantor/*:with_spdlog": False,
+        "spdlog/*:header_only": False,
+    }
     def requirements(self):
         self.requires("spdlog/1.17.0")
+        self.requires("drogon/1.9.13")
 
     def build_requirements(self):
         self.test_requires("gtest/1.18.0")

@@ -1,0 +1,482 @@
+{
+  "openapi": "3.0.3",
+  "info": {
+    "title": "Movie Theater Booking API",
+    "version": "0.1.0"
+  },
+  "servers": [
+    {
+      "url": "/",
+      "description": "This server"
+    }
+  ],
+  "tags": [
+    {
+      "name": "Movies"
+    },
+    {
+      "name": "Theaters"
+    },
+    {
+      "name": "Screenings"
+    },
+    {
+      "name": "Bookings"
+    },
+    {
+      "name": "Documentation"
+    }
+  ],
+  "paths": {
+    "/movies": {
+      "get": {
+        "operationId": "listMovies",
+        "summary": "List all movies",
+        "tags": [
+          "Movies"
+        ],
+        "responses": {
+          "200": {
+            "description": "All movies; order is unspecified",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/Movie"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/theaters": {
+      "get": {
+        "operationId": "listTheaters",
+        "summary": "List all theaters",
+        "tags": [
+          "Theaters"
+        ],
+        "responses": {
+          "200": {
+            "description": "All theaters; order is unspecified",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/Theater"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/theater": {
+      "get": {
+        "operationId": "listTheatersWithMovie",
+        "summary": "Find theaters showing a movie",
+        "tags": [
+          "Theaters"
+        ],
+        "parameters": [
+          {
+            "name": "movieId",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "$ref": "#/components/schemas/Id"
+            },
+            "example": 1
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Distinct theaters; an unknown movie returns an empty array",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/Theater"
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid or missing input",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/screenings": {
+      "get": {
+        "operationId": "listScreenings",
+        "summary": "List screenings, optionally filtered by movie and theater",
+        "tags": [
+          "Screenings"
+        ],
+        "description": "Omit both filters to list screening summaries containing only id, movieId, and theaterId. Supply both movieId and theaterId to return matching screening IDs. Supplying only one filter is invalid. No matches returns an empty array. Seat availability is retrieved separately through /available_seats?screeningId=... .",
+        "parameters": [
+          {
+            "name": "movieId",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "$ref": "#/components/schemas/Id"
+            },
+            "example": 1
+          },
+          {
+            "name": "theaterId",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "$ref": "#/components/schemas/Id"
+            },
+            "example": 10
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Screening summaries without filters; ID-only records with both filters",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "anyOf": [
+                      {
+                        "$ref": "#/components/schemas/ScreeningSummary"
+                      },
+                      {
+                        "$ref": "#/components/schemas/ScreeningId"
+                      }
+                    ]
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid or missing input",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/available_seats": {
+      "get": {
+        "operationId": "listAvailableSeats",
+        "summary": "List available seats for a screening",
+        "tags": [
+          "Screenings"
+        ],
+        "parameters": [
+          {
+            "name": "screeningId",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "$ref": "#/components/schemas/Id"
+            },
+            "example": 100
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Available configured seats; unknown or sold-out screenings return an empty array",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/AvailableSeat"
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid or missing input",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/bookings": {
+      "post": {
+        "operationId": "makeBooking",
+        "summary": "Book seats atomically",
+        "tags": [
+          "Bookings"
+        ],
+        "description": "All requested seats are booked together, or none are changed. State is held in memory and resets on restart.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/BookingRequest"
+              },
+              "example": {
+                "screeningId": 100,
+                "seats": [
+                  "A1",
+                  "A2"
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Seats successfully booked",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BookingResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid or missing input",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Screening does not exist, or requested seats do not exist or are already booked; no seats changed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/openapi.json": {
+      "get": {
+        "operationId": "getOpenApi",
+        "summary": "Download the OpenAPI document",
+        "tags": [
+          "Documentation"
+        ],
+        "responses": {
+          "200": {
+            "description": "OpenAPI 3.0 specification",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/docs": {
+      "get": {
+        "operationId": "getSwaggerUi",
+        "summary": "Open Swagger UI",
+        "tags": [
+          "Documentation"
+        ],
+        "responses": {
+          "200": {
+            "description": "Interactive documentation; browser loads pinned Swagger UI assets from jsDelivr",
+            "content": {
+              "text/html": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "Id": {
+        "type": "integer",
+        "format": "int64",
+        "minimum": 0,
+        "maximum": 4294967295
+      },
+      "Movie": {
+        "type": "object",
+        "required": [
+          "id",
+          "movie"
+        ],
+        "properties": {
+          "id": {
+            "$ref": "#/components/schemas/Id"
+          },
+          "movie": {
+            "type": "string",
+            "example": "Interstellar"
+          }
+        }
+      },
+      "Theater": {
+        "type": "object",
+        "required": [
+          "id",
+          "name"
+        ],
+        "properties": {
+          "id": {
+            "$ref": "#/components/schemas/Id"
+          },
+          "name": {
+            "type": "string",
+            "example": "Cinema One"
+          }
+        }
+      },
+      "AvailableSeat": {
+        "type": "object",
+        "required": [
+          "seat",
+          "isBooked"
+        ],
+        "properties": {
+          "seat": {
+            "type": "string",
+            "example": "A1"
+          },
+          "isBooked": {
+            "type": "boolean",
+            "enum": [
+              false
+            ]
+          }
+        }
+      },
+      "ScreeningId": {
+        "type": "object",
+        "required": [
+          "id"
+        ],
+        "properties": {
+          "id": {
+            "$ref": "#/components/schemas/Id"
+          }
+        }
+      },
+      "Error": {
+        "type": "object",
+        "required": [
+          "error"
+        ],
+        "properties": {
+          "error": {
+            "type": "string"
+          }
+        }
+      },
+      "BookingRequest": {
+        "type": "object",
+        "required": [
+          "screeningId",
+          "seats"
+        ],
+        "properties": {
+          "screeningId": {
+            "$ref": "#/components/schemas/Id"
+          },
+          "seats": {
+            "type": "array",
+            "minItems": 1,
+            "maxItems": 20,
+            "uniqueItems": true,
+            "items": {
+              "type": "string",
+              "minLength": 1
+            }
+          }
+        }
+      },
+      "BookingResponse": {
+        "type": "object",
+        "required": [
+          "booked",
+          "screeningId",
+          "seats"
+        ],
+        "properties": {
+          "booked": {
+            "type": "boolean",
+            "enum": [
+              true
+            ]
+          },
+          "screeningId": {
+            "$ref": "#/components/schemas/Id"
+          },
+          "seats": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        }
+      },
+      "ScreeningSummary": {
+        "type": "object",
+        "required": [
+          "id",
+          "movieId",
+          "theaterId"
+        ],
+        "properties": {
+          "id": {
+            "$ref": "#/components/schemas/Id"
+          },
+          "movieId": {
+            "$ref": "#/components/schemas/Id"
+          },
+          "theaterId": {
+            "$ref": "#/components/schemas/Id"
+          }
+        }
+      }
+    }
+  }
+}
