@@ -57,7 +57,6 @@ docker run --rm -p 8080:8080 movie-theater-booking:local
 ```
 
 The image includes `config/db.json`, runs as a non-root user, and accepts the same CLI options and environment variables.
-BuildKit caches Alpine dependencies locally; CI also reuses cached build layers. Application builds use unity compilation and Ninja's default parallelism.
 
 ## Load test
 

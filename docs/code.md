@@ -62,8 +62,13 @@ Startup applies one global pattern and the configured logging level. Drogon and
 Trantor log independently with Trantor's native format and corresponding threshold.
 Trantor always emits warning/error/fatal records regardless of that threshold;
 `off` explicitly disables its output. Model formatters are provided separately in
-`DataModel/formatters.h`. Formatting a trace message's arguments still incurs work
-before the logging call checks its level.
+`DataModel/formatters.h`. HTTP handlers move locally owned JSON into Drogon and
+pretty-print response bodies only when trace logging is enabled.
+
+`api::screeningsJson` writes the numeric screening snapshots directly into an owning
+JSON response body using `std::to_chars`. Filtered results expose only `id`; full
+results also expose `movieId` and `theaterId`. The endpoint still takes a fresh DB
+snapshot under the read lock. It creates no cache or borrowed storage views.
 
 ## Regression tests
 

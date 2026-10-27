@@ -35,6 +35,7 @@ configure_file(docs/assets.h.in generated/api_docs_assets.h @ONLY)
 
 # Compile the implementation once, then reuse it in the server and tests.
 add_library(booking-core STATIC
+    src/api/screenings.cpp
     src/DB/queries.cpp
     src/DB/DB.cpp
     src/DataModel/Screening.cpp

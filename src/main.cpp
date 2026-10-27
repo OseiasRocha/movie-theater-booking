@@ -6,6 +6,7 @@
 #include "DB/DB.h"
 #include "DB/queries.h"
 #include "api/docs.h"
+#include "api/screenings.h"
 #include "config/config.h"
 #include <algorithm>
 #include <array>
@@ -133,8 +134,8 @@ void setupEndpoints(std::shared_ptr<spdlog::logger> logger) {
    drogon::app().registerHandler(
       "/bookings",
       [logger](const drogon::HttpRequestPtr& req, std::function<void(const drogon::HttpResponsePtr&)>&& callback) {
-         const auto respond = [&](drogon::HttpStatusCode status, const Json::Value& json) {
-            auto response = drogon::HttpResponse::newHttpJsonResponse(json);
+         const auto respond = [&](drogon::HttpStatusCode status, Json::Value json) {
+            auto response = drogon::HttpResponse::newHttpJsonResponse(std::move(json));
             response->setStatusCode(status);
             logger->debug("Booking response status: {}", static_cast<int>(status));
             callback(response);
@@ -142,7 +143,7 @@ void setupEndpoints(std::shared_ptr<spdlog::logger> logger) {
          const auto reject = [&](const std::string& message) {
             Json::Value json(Json::objectValue);
             json["error"] = message;
-            respond(drogon::k400BadRequest, json);
+            respond(drogon::k400BadRequest, std::move(json));
          };
 
          const auto body = req->getJsonObject();
@@ -171,7 +172,7 @@ void setupEndpoints(std::shared_ptr<spdlog::logger> logger) {
          if (!db::DB::getInstance().query(queries::MakeBooking{std::move(seats), screeningId})) {
             Json::Value json(Json::objectValue);
             json["error"] = "Screening not found or requested seats do not exist or are already booked";
-            respond(drogon::k409Conflict, json);
+            respond(drogon::k409Conflict, std::move(json));
             return;
          }
 
@@ -179,7 +180,7 @@ void setupEndpoints(std::shared_ptr<spdlog::logger> logger) {
          json["booked"] = true;
          json["screeningId"] = screeningId;
          json["seats"] = (*body)["seats"];
-         respond(drogon::k200OK, json);
+         respond(drogon::k200OK, std::move(json));
       },
       {drogon::Post}, "MakeBooking");
    drogon::app().registerHandler(
@@ -194,9 +195,11 @@ void setupEndpoints(std::shared_ptr<spdlog::logger> logger) {
             item["movie"] = std::move(std::string{movie.name()});
             json.append(std::move(item));
          }
-         drogon::HttpResponsePtr resp = drogon::HttpResponse::newHttpJsonResponse(json);
+         drogon::HttpResponsePtr resp = drogon::HttpResponse::newHttpJsonResponse(std::move(json));
          logger->debug("Response status: {}", static_cast<int>(resp->getStatusCode()));
-         logger->trace("Response body: {}", resp->getJsonObject()->toStyledString());
+         if (logger->should_log(spdlog::level::trace)) {
+            logger->trace("Response body: {}", resp->getJsonObject()->toStyledString());
+         }
          callback(resp);
       },
       {drogon::Get}, "MoviesList");
@@ -212,9 +215,11 @@ void setupEndpoints(std::shared_ptr<spdlog::logger> logger) {
             item["name"] = std::move(std::string{theater.name()});
             json.append(std::move(item));
          }
-         drogon::HttpResponsePtr resp = drogon::HttpResponse::newHttpJsonResponse(json);
+         drogon::HttpResponsePtr resp = drogon::HttpResponse::newHttpJsonResponse(std::move(json));
          logger->debug("Response status: {}", static_cast<int>(resp->getStatusCode()));
-         logger->trace("Response body: {}", resp->getJsonObject()->toStyledString());
+         if (logger->should_log(spdlog::level::trace)) {
+            logger->trace("Response body: {}", resp->getJsonObject()->toStyledString());
+         }
          callback(resp);
       },
       {drogon::Get}, "TheatersList");
@@ -236,7 +241,7 @@ void setupEndpoints(std::shared_ptr<spdlog::logger> logger) {
                 theaterEnd != theater.data() + theater.size()) {
                Json::Value error(Json::objectValue);
                error["error"] = "Both movieId and theaterId must be valid unsigned 32-bit integers";
-               auto response = drogon::HttpResponse::newHttpJsonResponse(error);
+               auto response = drogon::HttpResponse::newHttpJsonResponse(std::move(error));
                response->setStatusCode(drogon::k400BadRequest);
                callback(response);
                return;
@@ -245,21 +250,13 @@ void setupEndpoints(std::shared_ptr<spdlog::logger> logger) {
          } else {
             screenings = db::DB::getInstance().query(queries::GetAllScreenings{});
          }
-         Json::Value json(Json::arrayValue);
-         for (const auto& screening : screenings) {
-            Json::Value item{Json::objectValue};
-            item["id"] = screening.id;
-            if (filtered) {
-               json.append(std::move(item));
-               continue;
-            }
-            item["movieId"] = screening.movieId;
-            item["theaterId"] = screening.theaterId;
-            json.append(std::move(item));
-         }
-         drogon::HttpResponsePtr resp = drogon::HttpResponse::newHttpJsonResponse(json);
+         auto resp = drogon::HttpResponse::newHttpResponse();
+         resp->setContentTypeCode(drogon::CT_APPLICATION_JSON);
+         resp->setBody(api::screeningsJson(screenings, filtered));
          logger->debug("Response status: {}", static_cast<int>(resp->getStatusCode()));
-         logger->trace("Response body: {}", resp->getJsonObject()->toStyledString());
+         if (logger->should_log(spdlog::level::trace)) {
+            logger->trace("Response body: {}", resp->getJsonObject()->toStyledString());
+         }
          callback(resp);
       },
       {drogon::Get}, "ScreeningsList");
@@ -279,14 +276,16 @@ void setupEndpoints(std::shared_ptr<spdlog::logger> logger) {
                item["name"] = std::move(std::string{theater.name()});
                json.append(std::move(item));
             }
-            drogon::HttpResponsePtr resp = drogon::HttpResponse::newHttpJsonResponse(json);
+            drogon::HttpResponsePtr resp = drogon::HttpResponse::newHttpJsonResponse(std::move(json));
             logger->debug("Response status: {}", static_cast<int>(resp->getStatusCode()));
-            logger->trace("Response body: {}", resp->getJsonObject()->toStyledString());
+            if (logger->should_log(spdlog::level::trace)) {
+               logger->trace("Response body: {}", resp->getJsonObject()->toStyledString());
+            }
             callback(resp);
          } else {
             Json::Value json{Json::objectValue};
             json["error"] = "movie must be a valid unsigned 32-bit integer";
-            drogon::HttpResponsePtr resp = drogon::HttpResponse::newHttpJsonResponse(json);
+            drogon::HttpResponsePtr resp = drogon::HttpResponse::newHttpJsonResponse(std::move(json));
             resp->setStatusCode(drogon::HttpStatusCode::k400BadRequest);
             logger->debug("Response status: {}", static_cast<int>(resp->getStatusCode()));
             logger->debug("movieId: {}", movieIdInt);
@@ -311,14 +310,16 @@ void setupEndpoints(std::shared_ptr<spdlog::logger> logger) {
                item["isBooked"] = seat.isBooked();
                json.append(std::move(item));
             }
-            drogon::HttpResponsePtr resp = drogon::HttpResponse::newHttpJsonResponse(json);
+            drogon::HttpResponsePtr resp = drogon::HttpResponse::newHttpJsonResponse(std::move(json));
             logger->debug("Response status: {}", static_cast<int>(resp->getStatusCode()));
-            logger->trace("Response body: {}", resp->getJsonObject()->toStyledString());
+            if (logger->should_log(spdlog::level::trace)) {
+               logger->trace("Response body: {}", resp->getJsonObject()->toStyledString());
+            }
             callback(resp);
          } else {
             Json::Value json{Json::objectValue};
             json["error"] = "screeningId must be a valid unsigned 32-bit integer";
-            drogon::HttpResponsePtr resp = drogon::HttpResponse::newHttpJsonResponse(json);
+            drogon::HttpResponsePtr resp = drogon::HttpResponse::newHttpJsonResponse(std::move(json));
             resp->setStatusCode(drogon::HttpStatusCode::k400BadRequest);
             logger->debug("Response status: {}", static_cast<int>(resp->getStatusCode()));
             logger->debug("screeningId: {} ", screeningIdInt);
