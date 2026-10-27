@@ -86,7 +86,7 @@ jobs:
           container_id=$(docker run --detach --publish 127.0.0.1::8080 movie-theater-booking:ci)
           trap 'docker logs "$container_id"; docker rm --force "$container_id"' EXIT
           host_port=$(docker inspect --format '{{(index (index .NetworkSettings.Ports "8080/tcp") 0).HostPort}}' "$container_id")
-          curl --fail --connect-timeout 2 --max-time 5 --retry 30 --retry-connrefused --retry-delay 1 --retry-max-time 60 "http://127.0.0.1:${host_port}/movies"
+          curl --fail --connect-timeout 2 --max-time 5 --retry 30 --retry-all-errors --retry-delay 1 --retry-max-time 60 "http://127.0.0.1:${host_port}/movies"
           curl --fail --connect-timeout 2 --max-time 5 "http://127.0.0.1:${host_port}/openapi.json"
       - name: Save tested image for publication
         if: github.event_name == 'release'
@@ -101,10 +101,57 @@ jobs:
           if-no-files-found: error
           retention-days: 1
 
-  publish:
-    name: Publish release artifacts
+  publish-docker:
+    name: Publish Docker image to Docker Hub
     if: github.event_name == 'release'
-    needs: [build, docker]
+    needs: [docker]
+    runs-on: ubuntu-latest
+    env:
+      DOCKERHUB_USERNAME: ${{ secrets.DOCKERHUB_USERNAME || secrets.DHI_USERNAME }}
+      DOCKERHUB_TOKEN: ${{ secrets.DOCKERHUB_TOKEN || secrets.DHI_TOKEN }}
+    steps:
+      - name: Check Docker Hub credentials
+        run: |
+          if [ -z "$DOCKERHUB_USERNAME" ] || [ -z "$DOCKERHUB_TOKEN" ]; then
+            echo "::error::Set DOCKERHUB_USERNAME and DOCKERHUB_TOKEN, or DHI_USERNAME and DHI_TOKEN with Docker Hub push access."
+            exit 1
+          fi
+      - name: Download tested Docker image
+        uses: actions/download-artifact@v4
+        with:
+          name: docker-image
+          path: image
+      - name: Log in to Docker Hub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ env.DOCKERHUB_USERNAME }}
+          password: ${{ env.DOCKERHUB_TOKEN }}
+      - name: Prepare image tags
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ vars.DOCKERHUB_IMAGE || format('{0}/movie-theater-booking', env.DOCKERHUB_USERNAME) }}
+          flavor: latest=false
+          tags: |
+            type=raw,value=${{ github.event.release.tag_name }}
+            type=raw,value=latest,enable=${{ !github.event.release.prerelease }}
+      - name: Publish tested image to Docker Hub
+        env:
+          IMAGE_TAGS: ${{ steps.meta.outputs.tags }}
+        run: |
+          set -euo pipefail
+          test -n "$IMAGE_TAGS"
+          docker load --input image/docker-image.tar.gz
+          while IFS= read -r image_tag; do
+            [ -n "$image_tag" ] || continue
+            docker tag movie-theater-booking:ci "$image_tag"
+            docker push "$image_tag"
+          done <<< "$IMAGE_TAGS"
+
+  publish:
+    name: Publish binaries to GitHub Release
+    if: github.event_name == 'release'
+    needs: [build]
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -115,34 +162,6 @@ jobs:
           pattern: release-*
           path: dist
           merge-multiple: true
-      - name: Download tested Docker image
-        uses: actions/download-artifact@v4
-        with:
-          name: docker-image
-          path: image
-      - name: Log in to Docker Hub
-        uses: docker/login-action@v3
-        with:
-          username: ${{ secrets.DHI_USERNAME }}
-          password: ${{ secrets.DHI_TOKEN }}
-      - name: Prepare image tags
-        id: meta
-        uses: docker/metadata-action@v5
-        with:
-          images: ${{ vars.DOCKERHUB_IMAGE || format('{0}/movie-theater-booking', secrets.DHI_USERNAME) }}
-          flavor: latest=false
-          tags: |
-            type=raw,value=${{ github.event.release.tag_name }}
-            type=raw,value=latest,enable=${{ !github.event.release.prerelease }}
-      - name: Publish tested image to Docker Hub
-        env:
-          IMAGE_TAGS: ${{ steps.meta.outputs.tags }}
-        run: |
-          docker load --input image/docker-image.tar.gz
-          while IFS= read -r image_tag; do
-            docker tag movie-theater-booking:ci "$image_tag"
-            docker push "$image_tag"
-          done <<< "$IMAGE_TAGS"
       - name: Upload binaries to GitHub Release
         env:
           GH_TOKEN: ${{ github.token }}
